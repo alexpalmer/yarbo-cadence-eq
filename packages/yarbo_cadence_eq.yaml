@@ -7,12 +7,18 @@
 #    button.<slug>_start_plan / _pause_plan / _resume_plan / _stop_plan
 #    button.<slug>_return_to_charge
 #    button.<slug>_refresh_plans / _refresh_map_data / _refresh_device_data / _refresh_gps_reference
-#  Plan chosen via select.<slug>_plan_select; wake via select.<slug>_working_state -> "working".
+#  Plan chosen via select.yarbocadenceeq_plan_select; wake via select.<slug>_working_state -> "working".
 #  The Start Plan button enforces its own preconditions (online, plan selected,
 #  RTK Strong/Medium, not already running, not returning, NOT actively charging).
 #
-#  >>> ONE SETTING TO GET RIGHT: input_text.yarbocadenceeq_device_slug  <<<
-#  Your Yarbo's entity prefix. sensor.yarbo_battery -> slug "yarbo".
+#  >>> OPTIONAL OVERRIDE: input_text.yarbocadenceeq_device_slug  <<<
+#  Optional override for your Yarbo's entity prefix. YarboHA normally uses the
+#  robot serial, e.g. sensor.25070102ovpie639_battery -> slug "25070102ovpie639".
+#  Leave blank when there is exactly one YarboHA device; the package auto-detects.
+#
+#  >>> OPTIONAL OVERRIDE: input_text.yarbocadenceeq_weather_entity <<<
+#  Optional weather entity used for forecast timing. Leave blank to use
+#  weather.openweathermap when present, or the only weather.* entity if there is one.
 #
 #  INSTALL:  configuration.yaml ->
 #    homeassistant:
@@ -27,11 +33,13 @@
 
 input_text:
   yarbocadenceeq_device_slug:
-    name: "YarboCadenceEQ: Yarbo entity slug"
-    initial: "yarbo"
+    name: "YarboCadenceEQ: Yarbo entity slug override"
     max: 60
-  # The plan to run is chosen on the native Yarbo dropdown (select.<slug>_plan_select,
-  # whose options come straight from the robot). This field just remembers your
+  yarbocadenceeq_weather_entity:
+    name: "YarboCadenceEQ: Weather entity override"
+    max: 120
+  # The plan to run is chosen on select.yarbocadenceeq_plan_select, a wrapper whose
+  # options come straight from the robot. This field just remembers your
   # pick across restarts — it's written automatically; you don't edit it.
   yarbocadenceeq_selected_plan:
     name: "Selected plan (remembered)"
@@ -232,14 +240,15 @@ input_boolean:
   yarbocadenceeq_show_homekit_help:
     name: "Show HomeKit setup help"
     icon: mdi:help-circle-outline
-  # Master enable for the soil-moisture gate. ON = the listed sensors gate the cut
+  # Master enable for the soil-moisture gate. Defaults OFF so installs without
+  # soil sensors can mow immediately. ON = the listed sensors gate the cut
   # (wet ground blocks; if all listed sensors are unavailable the cut is BLOCKED and
   # you get a notification, because moisture is a primary safety gate). OFF = moisture
   # never gates (for users with no soil sensors).
   yarbocadenceeq_use_moisture:
     name: "YarboCadenceEQ: Use moisture sensors"
     icon: mdi:water-percent
-    initial: true
+    initial: false
   yarbocadenceeq_show_moisture_help:
     name: "Show moisture setup help"
     icon: mdi:help-circle-outline
@@ -293,19 +302,238 @@ sensor:
   - platform: statistics
     name: "YarboCadenceEQ: Onboard Rain Mean"
     unique_id: yarbocadenceeq_onboard_rain_mean
-    entity_id: sensor.yarbo_rain_sensor
+    entity_id: sensor.yarbocadenceeq_rain_sensor
     state_characteristic: mean
     max_age:
       seconds: 30
     sampling_size: 120
 
 template:
+  # ---- YarboHA adapter ------------------------------------------------------
+  # YarboHA's entity prefix is usually the robot serial, not "yarbo". This adapter
+  # detects the prefix when there is exactly one YarboHA-style plan select, or uses
+  # input_text.yarbocadenceeq_device_slug as an override. The rest of this package
+  # and the dashboard use stable yarbocadenceeq_* entities so users do not have to
+  # find/replace serial-specific entity IDs.
+  - sensor:
+      - name: "YarboCadenceEQ: Device Slug Effective"
+        unique_id: yarbocadenceeq_device_slug_effective
+        default_entity_id: sensor.yarbocadenceeq_device_slug_effective
+        icon: mdi:identifier
+        state: >
+          {% set manual = states('input_text.yarbocadenceeq_device_slug') | trim %}
+          {% set bad = ['', 'unknown', 'unavailable', 'none', 'None'] %}
+          {% set ns = namespace(slugs=[]) %}
+          {% for e in states.select %}
+            {% if e.entity_id.endswith('_plan_select') and e.entity_id != 'select.yarbocadenceeq_plan_select' %}
+              {% set slug = e.entity_id.split('.')[1][:-12] %}
+              {% if states('select.' ~ slug ~ '_working_state') not in ['unknown','unavailable'] %}
+                {% set ns.slugs = ns.slugs + [slug] %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {% if manual not in bad and (manual != 'yarbo' or has_value('sensor.yarbo_battery') or ns.slugs | length != 1) %}
+            {{ manual }}
+          {% elif ns.slugs | length == 1 %}
+            {{ ns.slugs[0] }}
+          {% else %}
+            {{ manual if manual not in bad else 'yarbo' }}
+          {% endif %}
+      - name: "YarboCadenceEQ: Device Slug Status"
+        unique_id: yarbocadenceeq_device_slug_status
+        default_entity_id: sensor.yarbocadenceeq_device_slug_status
+        icon: mdi:robot-mower
+        state: >
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
+          {% set ent = 'sensor.' ~ s ~ '_battery' %}
+          {% set exists = states.sensor | selectattr('entity_id','eq', ent) | list | count > 0 %}
+          {% if exists %}
+            OK
+          {% else %}
+            Set Yarbo slug
+          {% endif %}
+        attributes:
+          active_slug: "{{ states('sensor.yarbocadenceeq_device_slug_effective') }}"
+          expected_entities: >
+            sensor.{{ states('sensor.yarbocadenceeq_device_slug_effective') }}_battery,
+            select.{{ states('sensor.yarbocadenceeq_device_slug_effective') }}_plan_select
+
+      - name: "YarboCadenceEQ: Weather Entity Effective"
+        unique_id: yarbocadenceeq_weather_entity_effective
+        default_entity_id: sensor.yarbocadenceeq_weather_entity_effective
+        icon: mdi:weather-partly-cloudy
+        state: >
+          {% set manual = states('input_text.yarbocadenceeq_weather_entity') | trim %}
+          {% set bad = ['', 'unknown', 'unavailable', 'none', 'None'] %}
+          {% set ns = namespace(weather=[]) %}
+          {% for e in states.weather %}
+            {% set ns.weather = ns.weather + [e.entity_id] %}
+          {% endfor %}
+          {% if manual not in bad %}
+            {{ manual }}
+          {% elif 'weather.openweathermap' in ns.weather %}
+            weather.openweathermap
+          {% elif ns.weather | length == 1 %}
+            {{ ns.weather[0] }}
+          {% else %}
+            unknown
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Weather Entity Status"
+        unique_id: yarbocadenceeq_weather_entity_status
+        default_entity_id: sensor.yarbocadenceeq_weather_entity_status
+        icon: mdi:weather-cloudy-alert
+        state: >
+          {% set ent = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+          {% set exists = states.weather | selectattr('entity_id','eq', ent) | list | count > 0 %}
+          {{ 'OK' if exists else 'Set weather entity' }}
+        attributes:
+          active_entity: "{{ states('sensor.yarbocadenceeq_weather_entity_effective') }}"
+          detected_entities: >
+            {{ states.weather | map(attribute='entity_id') | list }}
+
+      - name: "YarboCadenceEQ: Battery"
+        unique_id: yarbocadenceeq_battery
+        default_entity_id: sensor.yarbocadenceeq_battery
+        unit_of_measurement: "%"
+        icon: mdi:battery
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_battery') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_battery') }}"
+
+      - name: "YarboCadenceEQ: Charging Power"
+        unique_id: yarbocadenceeq_charging_power
+        default_entity_id: sensor.yarbocadenceeq_charging_power
+        unit_of_measurement: W
+        icon: mdi:flash
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging_power') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging_power') }}"
+
+      - name: "YarboCadenceEQ: RTK Signal"
+        unique_id: yarbocadenceeq_rtk_signal
+        default_entity_id: sensor.yarbocadenceeq_rtk_signal
+        icon: mdi:crosshairs-gps
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rtk_signal') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rtk_signal') }}"
+
+      - name: "YarboCadenceEQ: Network"
+        unique_id: yarbocadenceeq_network
+        default_entity_id: sensor.yarbocadenceeq_network
+        icon: mdi:access-point-network
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_network') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_network') }}"
+
+      - name: "YarboCadenceEQ: Head Type"
+        unique_id: yarbocadenceeq_head_type
+        default_entity_id: sensor.yarbocadenceeq_head_type
+        icon: mdi:robot-mower
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_head_type') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_head_type') }}"
+
+      - name: "YarboCadenceEQ: Auto Plan Status"
+        unique_id: yarbocadenceeq_auto_plan_status
+        default_entity_id: sensor.yarbocadenceeq_auto_plan_status
+        icon: mdi:clipboard-list
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_status') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_status') }}"
+
+      - name: "YarboCadenceEQ: Auto Plan Pause Status"
+        unique_id: yarbocadenceeq_auto_plan_pause_status
+        default_entity_id: sensor.yarbocadenceeq_auto_plan_pause_status
+        icon: mdi:pause-circle
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_pause_status') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_pause_status') }}"
+
+      - name: "YarboCadenceEQ: Recharging Status"
+        unique_id: yarbocadenceeq_recharging_status
+        default_entity_id: sensor.yarbocadenceeq_recharging_status
+        icon: mdi:battery-charging
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_recharging_status') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_recharging_status') }}"
+
+      - name: "YarboCadenceEQ: Activity"
+        unique_id: yarbocadenceeq_activity
+        default_entity_id: sensor.yarbocadenceeq_activity
+        icon: mdi:power-sleep
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_activity') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_activity') }}"
+
+      - name: "YarboCadenceEQ: GPS Satellites"
+        unique_id: yarbocadenceeq_gps_satellites
+        default_entity_id: sensor.yarbocadenceeq_gps_satellites
+        icon: mdi:satellite-variant
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_gps_satellites') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_gps_satellites') }}"
+
+      - name: "YarboCadenceEQ: Rain Sensor"
+        unique_id: yarbocadenceeq_rain_sensor
+        default_entity_id: sensor.yarbocadenceeq_rain_sensor
+        icon: mdi:weather-rainy
+        state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_sensor') }}"
+        availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_sensor') }}"
+
+    binary_sensor:
+      - name: "YarboCadenceEQ: Online"
+        unique_id: yarbocadenceeq_online
+        default_entity_id: binary_sensor.yarbocadenceeq_online
+        device_class: connectivity
+        state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_online','on') }}"
+        availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_online') }}"
+
+      - name: "YarboCadenceEQ: Charging"
+        unique_id: yarbocadenceeq_charging
+        default_entity_id: binary_sensor.yarbocadenceeq_charging
+        device_class: battery_charging
+        state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging','on') }}"
+        availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging') }}"
+
+      - name: "YarboCadenceEQ: Raw Rain Detected"
+        unique_id: yarbocadenceeq_raw_rain_detected
+        default_entity_id: binary_sensor.yarbocadenceeq_raw_rain_detected
+        device_class: moisture
+        state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_detected','on') }}"
+        availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_detected') }}"
+
+    select:
+      - name: "YarboCadenceEQ: Plan Select"
+        unique_id: yarbocadenceeq_plan_select
+        default_entity_id: select.yarbocadenceeq_plan_select
+        icon: mdi:clipboard-list
+        state: >
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
+          {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
+          {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
+          {% set current = states('select.' ~ s ~ '_plan_select') %}
+          {% if current in opts %}{{ current }}
+          {% elif remembered in opts %}{{ remembered }}
+          {% elif opts | length > 0 %}Choose plan
+          {% else %}Set Yarbo slug{% endif %}
+        options: >
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
+          {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
+          {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
+          {% set current = states('select.' ~ s ~ '_plan_select') %}
+          {% if opts | length == 0 %}
+            {{ ['Set Yarbo slug'] }}
+          {% elif current in opts or remembered in opts %}
+            {{ opts }}
+          {% else %}
+            {{ ['Choose plan'] + opts }}
+          {% endif %}
+        select_option:
+          - condition: template
+            value_template: "{{ option not in ['Set Yarbo slug', 'Choose plan'] }}"
+          - service: select.select_option
+            target:
+              entity_id: "select.{{ states('sensor.yarbocadenceeq_device_slug_effective') }}_plan_select"
+            data:
+              option: "{{ option }}"
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.yarbocadenceeq_selected_plan
+            data:
+              value: "{{ option }}"
+
   # ---- normalized Yarbo signals (binary) + derived logic --------------------
-  # Raw robot state (battery, head type, network, RTK, plan/recharging status,
-  # activity, charging power, onboard rain) is read straight from the YarboHA
-  # integration entities (sensor.yarbo_* / binary_sensor.yarbo_*). There is no
-  # passthrough mirror layer anymore — only genuinely-derived signals live here.
-  # (If your device slug isn't "yarbo", find/replace sensor.yarbo_ accordingly.)
   - binary_sensor:
       - name: "YarboCadenceEQ: On Dock"
         unique_id: yarbocadenceeq_on_dock
@@ -318,29 +546,29 @@ template:
       - name: "YarboCadenceEQ: Actively Out"
         unique_id: yarbocadenceeq_actively_out
         state: >
-          {% set plan = states('sensor.yarbo_auto_plan_status') %}
-          {% set rech = states('sensor.yarbo_recharging_status') %}
+          {% set plan = states('sensor.yarbocadenceeq_auto_plan_status') %}
+          {% set rech = states('sensor.yarbocadenceeq_recharging_status') %}
           {{ plan in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation']
              or rech in ['Returning on Path','Returning in Area','Repositioning'] }}
 
       - name: "YarboCadenceEQ: Running Plan"
         unique_id: yarbocadenceeq_running_plan
         state: >
-          {{ states('sensor.yarbo_auto_plan_status') in [
+          {{ states('sensor.yarbocadenceeq_auto_plan_status') in [
               'Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}
 
       - name: "YarboCadenceEQ: Charging Now"
         unique_id: yarbocadenceeq_charging_now
         state: >
-          {{ is_state('binary_sensor.yarbo_charging','on')
-             or states('sensor.yarbo_charging_power') | float(0)
+          {{ is_state('binary_sensor.yarbocadenceeq_charging','on')
+             or states('sensor.yarbocadenceeq_charging_power') | float(0)
                 > states('input_number.yarbocadenceeq_min_charging_power_w') | float(1)
              or is_state('input_boolean.yarbocadenceeq_docked','on') }}
 
       - name: "YarboCadenceEQ: GPS Lock OK"
         unique_id: yarbocadenceeq_gps_lock_ok
         state: >
-          {% set sig = states('sensor.yarbo_rtk_signal') %}
+          {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
           {% if is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on') %}
             {{ sig in ['Strong','Medium'] }}
           {% else %}
@@ -362,9 +590,9 @@ template:
         unique_id: yarbocadenceeq_active_plan_has_selection
         # We can dispatch if Yarbo has reported at least one plan AND we have a
         # valid plan to run (your remembered pick, or whatever's selected on the
-        # native dropdown, both checked against the live option list).
+        # native YarboHA dropdown, both checked against the live option list).
         state: >
-          {% set s = states('input_text.yarbocadenceeq_device_slug') %}
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
           {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
           {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
           {% set current = states('select.' ~ s ~ '_plan_select') %}
@@ -420,10 +648,10 @@ template:
       - name: "YarboCadenceEQ: Yarbo Nominal"
         unique_id: yarbocadenceeq_yarbo_nominal
         state: >
-          {% set sig = states('sensor.yarbo_rtk_signal') %}
-          {{ is_state('binary_sensor.yarbo_online','on')
+          {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
+          {{ is_state('binary_sensor.yarbocadenceeq_online','on')
              and is_state('input_boolean.yarbocadenceeq_docked','on')
-             and states('sensor.yarbo_battery') | float(0)
+             and states('sensor.yarbocadenceeq_battery') | float(0)
                  >= states('input_number.yarbocadenceeq_min_battery_percent') | float(100)
              and (sig == 'Strong'
                   or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on')))
@@ -452,7 +680,7 @@ template:
         unique_id: yarbocadenceeq_onboard_rain_detected
         delay_on: "{{ states('input_number.yarbocadenceeq_rain_debounce_seconds') | int(60) }}"
         state: >
-          {{ is_state('binary_sensor.yarbo_rain_detected','on')
+          {{ is_state('binary_sensor.yarbocadenceeq_raw_rain_detected','on')
              or states('sensor.yarbocadenceeq_onboard_rain_mean') | float(0)
                 >= states('input_number.yarbocadenceeq_rain_sensor_threshold') | float(500) }}
 
@@ -464,9 +692,10 @@ template:
         state: >
           {% set h = state_attr('sensor.yarbocadenceeq_weather_forecast_cache','hourly') or [] %}
           {% set now_precip = (h[0].precipitation | float(0)) if (h | length > 0) else 0 %}
+          {% set wx = states('sensor.yarbocadenceeq_weather_entity_effective') %}
           {{ is_state('binary_sensor.yarbocadenceeq_onboard_rain_detected','on')
              or now_precip > 0
-             or states('weather.openweathermap') in ['rainy','pouring','lightning-rainy'] }}
+             or states(wx) in ['rainy','pouring','lightning-rainy'] }}
 
       - name: "YarboCadenceEQ: Weather Nominal"
         unique_id: yarbocadenceeq_weather_nominal
@@ -509,10 +738,9 @@ template:
   - sensor:
       # ========================================================================
       # SINGLE SOURCE OF TRUTH for "may we dispatch a cut right now".
-      # Computes the reason list ONCE, reading the dock LATCH helper and native
-      # device state DIRECTLY (never our own derived binaries for the simple
-      # mirrors) so a template blinking 'unavailable' on reload can't silently
-      # block. Returns 'OK' when nothing blocks, else a human-readable list.
+      # Computes the reason list ONCE, reading the dock LATCH helper and the
+      # stable YarboHA adapter entities above. Returns 'OK' when nothing blocks,
+      # else a human-readable list.
       # ok_to_cut_now and status_reason are thin reads of this — the gate logic
       # lives here and ONLY here.
       # ========================================================================
@@ -520,11 +748,11 @@ template:
         unique_id: yarbocadenceeq_cut_blocker
         icon: mdi:cancel
         state: >
-          {% set s = states('input_text.yarbocadenceeq_device_slug') %}
-          {% set sig = states('sensor.yarbo_rtk_signal') %}
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
+          {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
           {% set rtk_good = sig == 'Strong'
                             or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on')) %}
-          {% set running = states('sensor.yarbo_auto_plan_status')
+          {% set running = states('sensor.yarbocadenceeq_auto_plan_status')
                            in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
           {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
           {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
@@ -533,14 +761,14 @@ template:
           {% set use_dock = is_state('input_boolean.yarbocadenceeq_use_dock_coords','on') %}
           {% set dd = states('sensor.yarbocadenceeq_dock_distance_m') %}
           {% set at_dock = dd not in ['unknown','unavailable','none'] and (dd | float(9999)) <= 0.5 %}
-          {% set batt = states('sensor.yarbo_battery') | float(0) %}
+          {% set batt = states('sensor.yarbocadenceeq_battery') | float(0) %}
           {% set minb = states('input_number.yarbocadenceeq_min_battery_percent') | float(100) %}
           {% set dry = states('binary_sensor.yarbocadenceeq_is_dry') %}
           {% set rn  = states('binary_sensor.yarbocadenceeq_rain_detected') %}
           {% set tmp = states('binary_sensor.yarbocadenceeq_temp_safe_now') %}
           {% set ns = namespace(b=[]) %}
           {% if not is_state('input_boolean.yarbocadenceeq_auto_enabled','on') %}{% set ns.b = ns.b + ['mowing switch off'] %}{% endif %}
-          {% if not is_state('binary_sensor.yarbo_online','on') %}{% set ns.b = ns.b + ['robot offline'] %}{% endif %}
+          {% if not is_state('binary_sensor.yarbocadenceeq_online','on') %}{% set ns.b = ns.b + ['robot offline'] %}{% endif %}
           {% if not is_state('input_boolean.yarbocadenceeq_docked','on') %}{% set ns.b = ns.b + ['not on dock'] %}{% endif %}
           {% if running %}{% set ns.b = ns.b + ['plan already running'] %}{% endif %}
           {# Charging is NOT a blocker on its own — the robot sits at "Charging" for
@@ -548,8 +776,9 @@ template:
              is at/above the dispatch minimum. Battery level below is the real gate. #}
           {% if batt < minb %}{% set ns.b = ns.b + ['battery ' ~ (batt|round(0)|int) ~ '% < ' ~ (minb|round(0)|int) ~ '% min'] %}{% endif %}
           {% if not rtk_good %}{% set ns.b = ns.b + ['RTK ' ~ sig ~ ' (need Strong)'] %}{% endif %}
-          {% if states('sensor.yarbo_network') != 'Halow' %}{% set ns.b = ns.b + ['network ' ~ states('sensor.yarbo_network')] %}{% endif %}
-          {% if states('sensor.yarbo_head_type') != 'Mower' %}{% set ns.b = ns.b + ['head is ' ~ states('sensor.yarbo_head_type')] %}{% endif %}
+          {% if states('sensor.yarbocadenceeq_network') != 'Halow' %}{% set ns.b = ns.b + ['network ' ~ states('sensor.yarbocadenceeq_network')] %}{% endif %}
+          {% set mower_heads = ['Mower', 'Mower Pro'] %}
+          {% if states('sensor.yarbocadenceeq_head_type') not in mower_heads %}{% set ns.b = ns.b + ['head is ' ~ states('sensor.yarbocadenceeq_head_type')] %}{% endif %}
           {% if not has_plan %}{% set ns.b = ns.b + ['no plan selected'] %}{% endif %}
           {% if use_dock and not at_dock %}{% set ns.b = ns.b + ['dock GPS ' ~ states('sensor.yarbocadenceeq_dock_distance_display')] %}{% endif %}
           {% if dry != 'on'  %}
@@ -564,15 +793,15 @@ template:
       - name: "YarboCadenceEQ: Active Plan Name"
         unique_id: yarbocadenceeq_active_plan_name
         # Resolves to: your remembered pick if still valid, else whatever's
-        # selected on the native dropdown, else the first plan Yarbo reports.
+        # selected on the native YarboHA dropdown. It deliberately does not fall back to
+        # the first reported plan; a mowing plan should be chosen explicitly.
         state: >
-          {% set s = states('input_text.yarbocadenceeq_device_slug') %}
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
           {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
           {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
           {% set current = states('select.' ~ s ~ '_plan_select') %}
           {% if remembered in opts %}{{ remembered }}
           {% elif current in opts %}{{ current }}
-          {% elif opts | length > 0 %}{{ opts[0] }}
           {% else %}unknown{% endif %}
 
       - name: "YarboCadenceEQ: Active Plan Cut Hours"
@@ -585,7 +814,7 @@ template:
       - name: "YarboCadenceEQ: Plan Phase"
         unique_id: yarbocadenceeq_plan_phase
         state: >
-          {% set raw = states('sensor.yarbo_auto_plan_status') %}
+          {% set raw = states('sensor.yarbocadenceeq_auto_plan_status') %}
           {% set map = {
             'Cleaning': 'Mowing',
             'Calculating Route': 'Planning route',
@@ -609,11 +838,22 @@ template:
       # list (scales to 0..N), drops unavailable ones, takes the max.
       #   - moisture gate OFF        -> 0 (driest; never gates)
       #   - ON, valid readings       -> highest reading
-      #   - ON, listed but all out   -> "unavailable" (is_dry blocks + notifies)
-      #   - ON, no sensors listed    -> "unavailable" (mis-config; blocks + notifies)
+      #   - ON, listed but all out   -> unavailable (is_dry blocks + notifies)
+      #   - ON, no sensors listed    -> unavailable (mis-config; blocks + notifies)
       - name: "YarboCadenceEQ: Moisture Max"
         unique_id: yarbocadenceeq_moisture_max
         unit_of_measurement: "%"
+        availability: >
+          {% if not is_state('input_boolean.yarbocadenceeq_use_moisture','on') %}
+            true
+          {% else %}
+            {% set ids = states('input_text.yarbocadenceeq_moisture_sensors').split(',')
+                         | map('trim') | reject('eq','') | list %}
+            {% set vals = ids | map('states') | list
+                         | reject('in', ['unknown','unavailable','none','None',''])
+                         | map('float', -1) | select('ge', 0) | list %}
+            {{ vals | length > 0 }}
+          {% endif %}
         state: >
           {% if not is_state('input_boolean.yarbocadenceeq_use_moisture','on') %}
             0
@@ -623,7 +863,7 @@ template:
             {% set vals = ids | map('states') | list
                          | reject('in', ['unknown','unavailable','none','None',''])
                          | map('float', -1) | select('ge', 0) | list %}
-            {% if vals | length > 0 %}{{ vals | max }}{% else %}unavailable{% endif %}
+            {% if vals | length > 0 %}{{ vals | max }}{% else %}0{% endif %}
           {% endif %}
         attributes:
           configured: "{{ states('input_text.yarbocadenceeq_moisture_sensors') }}"
@@ -664,21 +904,31 @@ template:
       - name: "YarboCadenceEQ: Current Temp F"
         unique_id: yarbocadenceeq_current_temp_f
         unit_of_measurement: "°F"
-        state: "{{ state_attr('weather.openweathermap','temperature') | float(0) | round(1) }}"
+        availability: >
+          {% set wx = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+          {{ wx not in ['unknown','unavailable','none','None','']
+             and state_attr(wx,'temperature') is not none }}
+        state: >
+          {% set wx = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+          {{ state_attr(wx,'temperature') | float(0) | round(1) }}
 
       # Great-circle distance (METERS) from the robot's live GPS to the saved dock
       # coords, via haversine — so the radius is true meters regardless of the HA
       # unit system (the old at_dock_coords used distance(), which returns km/miles).
-      # "unknown" when the robot isn't reporting a GPS position (e.g. asleep).
+      # Unavailable when the robot isn't reporting a GPS position (e.g. asleep).
       - name: "YarboCadenceEQ: Dock Distance M"
         unique_id: yarbocadenceeq_dock_distance_m
         unit_of_measurement: m
+        availability: >
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
+          {{ state_attr('device_tracker.' ~ s ~ '_location','latitude') is not none
+             and state_attr('device_tracker.' ~ s ~ '_location','longitude') is not none }}
         state: >
-          {% set s = states('input_text.yarbocadenceeq_device_slug') %}
+          {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
           {% set lat = state_attr('device_tracker.' ~ s ~ '_location','latitude') %}
           {% set lon = state_attr('device_tracker.' ~ s ~ '_location','longitude') %}
           {% if lat is none or lon is none %}
-            unknown
+            0
           {% else %}
             {% set dlat = states('input_number.yarbocadenceeq_dock_latitude') | float(0) %}
             {% set dlon = states('input_number.yarbocadenceeq_dock_longitude') | float(0) %}
@@ -708,7 +958,7 @@ template:
       - name: "YarboCadenceEQ: Charging Power Display"
         unique_id: yarbocadenceeq_charging_power_display
         state: >
-          {% set p = states('sensor.yarbo_charging_power') | float(none) %}
+          {% set p = states('sensor.yarbocadenceeq_charging_power') | float(none) %}
           {{ '—' if p is none or p < -1500 or p > 2000 else (p | round(0) | int) ~ ' W' }}
 
       # Display-only mirror of the in-direct-sun window as plain True/False text
@@ -727,6 +977,22 @@ template:
         # to the max temperature across today's HOURLY entries. The 'temperature'
         # field name is verified against the OWM integration source (it's the
         # daily max / hourly temp).
+        availability: >
+          {% set d = state_attr('sensor.yarbocadenceeq_weather_forecast_cache','daily') or [] %}
+          {% if d | length > 0 and d[0].temperature is not none %}
+            true
+          {% else %}
+            {% set h = state_attr('sensor.yarbocadenceeq_weather_forecast_cache','hourly') or [] %}
+            {% set today = now().date() %}
+            {% set ns = namespace(found=false) %}
+            {% for e in h %}
+              {% set dt = e.datetime | as_datetime %}
+              {% if dt is not none and (dt | as_local).date() == today and e.temperature is not none %}
+                {% set ns.found = true %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.found }}
+          {% endif %}
         state: >
           {% set d = state_attr('sensor.yarbocadenceeq_weather_forecast_cache','daily') or [] %}
           {% if d | length > 0 and d[0].temperature is not none %}
@@ -742,7 +1008,7 @@ template:
                 {% if t > ns.hi %}{% set ns.hi = t %}{% endif %}
               {% endif %}
             {% endfor %}
-            {% if ns.hi > -990 %}{{ ns.hi | round(0) | int }}{% else %}unknown{% endif %}
+            {% if ns.hi > -990 %}{{ ns.hi | round(0) | int }}{% else %}0{% endif %}
           {% endif %}
 
       # Hours until the next rain. PRECISE hourly window first (0-48h, 1h steps),
@@ -879,7 +1145,7 @@ template:
         # else is just the cut_blocker reason, so this can never disagree with the
         # gate or go stale relative to it.
         state: >
-          {% if states('sensor.yarbo_auto_plan_status')
+          {% if states('sensor.yarbocadenceeq_auto_plan_status')
                 in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
             {% set ph = states('sensor.yarbocadenceeq_plan_phase') %}
             {{ 'Mowing now' if ph == 'Mowing' else ph }}
@@ -899,25 +1165,42 @@ template:
       - platform: homeassistant
         event: start
     action:
-      - service: weather.get_forecasts
-        data:
-          type: hourly
-        target:
-          entity_id: weather.openweathermap
-        response_variable: fc
-      - service: weather.get_forecasts
-        data:
-          type: daily
-        target:
-          entity_id: weather.openweathermap
-        response_variable: fcd
+      - variables:
+          weather_entity: "{{ states('sensor.yarbocadenceeq_weather_entity_effective') }}"
+      - variables:
+          weather_ready: >
+            {{ weather_entity not in ['unknown','unavailable','none','None','']
+               and states(weather_entity) not in ['unknown','unavailable'] }}
+      - choose:
+          - conditions:
+              - "{{ weather_ready }}"
+            sequence:
+              - service: weather.get_forecasts
+                data:
+                  type: hourly
+                target:
+                  entity_id: "{{ weather_entity }}"
+                response_variable: fc
+              - service: weather.get_forecasts
+                data:
+                  type: daily
+                target:
+                  entity_id: "{{ weather_entity }}"
+                response_variable: fcd
     sensor:
       - name: "YarboCadenceEQ: Weather Forecast Cache"
         unique_id: yarbocadenceeq_weather_forecast_cache
-        state: "ok"
+        state: "{{ 'ok' if weather_ready | default(false) else 'unavailable' }}"
         attributes:
-          hourly: "{{ fc['weather.openweathermap'].forecast }}"
-          daily: "{{ fcd['weather.openweathermap'].forecast }}"
+          weather_entity: "{{ weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) }}"
+          hourly: >
+            {% set ent = weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) %}
+            {% set res = fc | default({}) %}
+            {% if ent in res %}{{ res[ent].forecast }}{% else %}{{ [] }}{% endif %}
+          daily: >
+            {% set ent = weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) %}
+            {% set res = fcd | default({}) %}
+            {% if ent in res %}{{ res[ent].forecast }}{% else %}{{ [] }}{% endif %}
 
 
 # #############################################################################
@@ -935,7 +1218,7 @@ script:
     sequence:
       - service: button.press
         target:
-          entity_id: "button.{{ states('input_text.yarbocadenceeq_device_slug') }}_{{ button }}"
+          entity_id: "button.{{ states('sensor.yarbocadenceeq_device_slug_effective') }}_{{ button }}"
 
   # Optionally wake the device, then press all four Yarbo refresh buttons (spaced
   # so they don't collide). With wake:true (default) it first wakes the robot so
@@ -952,7 +1235,7 @@ script:
         selector:
           boolean:
     variables:
-      slug: "{{ states('input_text.yarbocadenceeq_device_slug') }}"
+      slug: "{{ states('sensor.yarbocadenceeq_device_slug_effective') }}"
       do_wake: "{{ wake | default(true) }}"
     sequence:
       - if: "{{ do_wake }}"
@@ -988,7 +1271,7 @@ script:
     alias: "YarboCadenceEQ: Start active plan"
     sequence:
       - variables:
-          slug: "{{ states('input_text.yarbocadenceeq_device_slug') }}"
+          slug: "{{ states('sensor.yarbocadenceeq_device_slug_effective') }}"
           plan_name: "{{ states('sensor.yarbocadenceeq_active_plan_name') }}"
       - choose:
           # No valid plan resolved (Yarbo hasn't reported plans yet) -> refresh
@@ -1027,7 +1310,7 @@ script:
               message: >
                 Plan "{{ plan_name }}" ({{ states('sensor.yarbocadenceeq_active_plan_cut_hours') }}h).
                 Soil {{ states('sensor.yarbocadenceeq_moisture_max') }}%/{{ states('input_number.yarbocadenceeq_moisture_max_percent') }}%,
-                {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F, RTK {{ states('sensor.yarbo_rtk_signal') }},
+                {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F, RTK {{ states('sensor.yarbocadenceeq_rtk_signal') }},
                 rain in {{ states('sensor.yarbocadenceeq_hours_until_rain') }}h.
 
   yarbocadenceeq_heat_pause:
@@ -1168,31 +1451,29 @@ script:
 
 automation:
 
-  # ---- Remember the plan you pick on the native Yarbo dropdown --------------
-  # The native select forgets its selection across restarts; this shadows it
+  # ---- Remember the plan you pick on the stable Cadence EQ dropdown ----------
+  # The native YarboHA select can forget its selection across restarts; this shadows it
   # into input_text.yarbocadenceeq_selected_plan (which persists) so the scheduler always
-  # knows which plan to run. (Hardcoded select entity_id; edit if your slug isn't
-  # "yarbo". The previous template trigger rendered the plan NAME, which is never
-  # the literal "true", so it never fired — this state trigger does.)
+  # knows which plan to run.
   - id: yarbocadenceeq_remember_plan
     alias: "YarboCadenceEQ: Remember selected plan"
     trigger:
       - platform: state
-        entity_id: select.yarbo_plan_select
+        entity_id: select.yarbocadenceeq_plan_select
     condition:
       - condition: template
         value_template: >
-          {{ states('select.yarbo_plan_select')
-             not in ['unknown','unavailable','none','None',''] }}
+          {{ states('select.yarbocadenceeq_plan_select')
+             not in ['unknown','unavailable','none','None','','Set Yarbo slug','Choose plan'] }}
     action:
       - service: input_text.set_value
         target:
           entity_id: input_text.yarbocadenceeq_selected_plan
         data:
-          value: "{{ states('select.yarbo_plan_select') }}"
+          value: "{{ states('select.yarbocadenceeq_plan_select') }}"
 
   # ---- Restore the remembered plan after a restart -------------------------
-  # On HA start the native select comes back "unknown"; once the integration has
+  # On HA start the native select can come back "unknown"; once the integration has
   # populated its option list, re-select the plan we saved so the dropdown (and
   # the integration's own Start button) reflect it again.
   - id: yarbocadenceeq_restore_plan_on_startup
@@ -1202,18 +1483,18 @@ automation:
         event: start
     action:
       - wait_template: >
-          {{ (state_attr('select.yarbo_plan_select','options') or []) | length > 0
+          {{ (state_attr('select.yarbocadenceeq_plan_select','options') or []) | length > 0
              and states('input_text.yarbocadenceeq_selected_plan')
-                 in (state_attr('select.yarbo_plan_select','options') or []) }}
+                 in (state_attr('select.yarbocadenceeq_plan_select','options') or []) }}
         timeout: "00:05:00"
         continue_on_timeout: true
       - condition: template
         value_template: >
           {{ states('input_text.yarbocadenceeq_selected_plan')
-             in (state_attr('select.yarbo_plan_select','options') or []) }}
+             in (state_attr('select.yarbocadenceeq_plan_select','options') or []) }}
       - service: select.select_option
         target:
-          entity_id: select.yarbo_plan_select
+          entity_id: select.yarbocadenceeq_plan_select
         data:
           option: "{{ states('input_text.yarbocadenceeq_selected_plan') }}"
 
@@ -1302,7 +1583,7 @@ automation:
         state: "off"
       - condition: template
         value_template: >
-          {{ states('sensor.yarbo_auto_plan_status')
+          {{ states('sensor.yarbocadenceeq_auto_plan_status')
              not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}
     action:
       - variables:
@@ -1318,11 +1599,11 @@ automation:
                 value_template: "{{ is_state('input_boolean.yarbocadenceeq_docked','on') }}"
               - or:
                   - condition: state
-                    entity_id: sensor.yarbo_activity
+                    entity_id: sensor.yarbocadenceeq_activity
                     state: "standby"
                   - condition: template
                     value_template: >
-                      {% set sig = states('sensor.yarbo_rtk_signal') %}
+                      {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
                       {{ not (sig == 'Strong'
                               or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on'))) }}
             sequence:
@@ -1330,7 +1611,7 @@ automation:
               - service: logbook.log
                 data:
                   name: "Yarbo Auto"
-                  message: "Waking + refreshing all Yarbo data before dispatch (RTK={{ states('sensor.yarbo_rtk_signal') }})."
+                  message: "Waking + refreshing all Yarbo data before dispatch (RTK={{ states('sensor.yarbocadenceeq_rtk_signal') }})."
 
           # CASE A: past interval and all gates pass -> cut.
           - conditions:
@@ -1444,10 +1725,10 @@ automation:
     alias: "YarboCadenceEQ: Dock latch — set on charge"
     trigger:
       - platform: state
-        entity_id: sensor.yarbo_recharging_status
+        entity_id: sensor.yarbocadenceeq_recharging_status
         to: "Charging"
       - platform: state
-        entity_id: sensor.yarbo_recharging_status
+        entity_id: sensor.yarbocadenceeq_recharging_status
         to: "Verifying"
       - platform: homeassistant
         event: start
@@ -1458,7 +1739,7 @@ automation:
         minutes: "/5"
     condition:
       - condition: state
-        entity_id: sensor.yarbo_recharging_status
+        entity_id: sensor.yarbocadenceeq_recharging_status
         state:
           - "Charging"
           - "Verifying"
@@ -1481,7 +1762,7 @@ automation:
     alias: "YarboCadenceEQ: Dock latch — clear on departure"
     trigger:
       - platform: state
-        entity_id: sensor.yarbo_auto_plan_status
+        entity_id: sensor.yarbocadenceeq_auto_plan_status
         to:
           - "Cleaning"
           - "Calculating Route"
@@ -1489,7 +1770,7 @@ automation:
           - "Waypoint Navigation"
         id: autoplan
       - platform: state
-        entity_id: sensor.yarbo_recharging_status
+        entity_id: sensor.yarbocadenceeq_recharging_status
         to:
           - "Returning on Path"
           - "Returning in Area"
@@ -1497,16 +1778,16 @@ automation:
         id: returning
       - platform: template
         value_template: >
-          {% set p = states('sensor.yarbo_charging_power') | float(0) %}
-          {% set rech = states('sensor.yarbo_recharging_status') %}
+          {% set p = states('sensor.yarbocadenceeq_charging_power') | float(0) %}
+          {% set rech = states('sensor.yarbocadenceeq_recharging_status') %}
           {% set on_charger = rech in ['Charging','Verifying']
-                              or is_state('binary_sensor.yarbo_charging','on') %}
-          {% set sig = states('sensor.yarbo_rtk_signal') %}
+                              or is_state('binary_sensor.yarbocadenceeq_charging','on') %}
+          {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
           {% set dd = states('sensor.yarbocadenceeq_dock_distance_m') %}
           {% set gps_out = sig == 'Strong'
                            and dd not in ['unknown','unavailable','none']
                            and (dd | float(0)) > 0.5 %}
-          {% set ap_active = states('sensor.yarbo_auto_plan_status')
+          {% set ap_active = states('sensor.yarbocadenceeq_auto_plan_status')
                              in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
           {% set js = states('input_datetime.yarbocadenceeq_current_job_started') %}
           {% set job_fresh = js not in ['unknown','unavailable'] and js
@@ -1530,12 +1811,12 @@ automation:
       - condition: template
         value_template: >
           {% if trigger.id == 'startup' %}
-            {% set sig = states('sensor.yarbo_rtk_signal') %}
+            {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
             {% set dd = states('sensor.yarbocadenceeq_dock_distance_m') %}
-            {% set on_charger = states('sensor.yarbo_recharging_status') in ['Charging','Verifying']
-                                or is_state('binary_sensor.yarbo_charging','on') %}
+            {% set on_charger = states('sensor.yarbocadenceeq_recharging_status') in ['Charging','Verifying']
+                                or is_state('binary_sensor.yarbocadenceeq_charging','on') %}
             {{ not on_charger and (
-               states('sensor.yarbo_auto_plan_status')
+               states('sensor.yarbocadenceeq_auto_plan_status')
                  in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation']
                or (sig == 'Strong'
                    and dd not in ['unknown','unavailable','none']
@@ -1552,9 +1833,9 @@ automation:
           name: "Yarbo Auto"
           message: >
             Dock latch cleared (departure via {{ trigger.id }};
-            power={{ states('sensor.yarbo_charging_power') }} W,
+            power={{ states('sensor.yarbocadenceeq_charging_power') }} W,
             dist={{ states('sensor.yarbocadenceeq_dock_distance_display') }},
-            RTK={{ states('sensor.yarbo_rtk_signal') }}).
+            RTK={{ states('sensor.yarbocadenceeq_rtk_signal') }}).
 
   # ---- JOB START: stamp when a plan actually begins running -----------------
   # Covers automatic AND manual/phone starts (anything that puts the robot into a
@@ -1590,15 +1871,15 @@ automation:
     max: 5
     trigger:
       - platform: state
-        entity_id: sensor.yarbo_auto_plan_status
+        entity_id: sensor.yarbocadenceeq_auto_plan_status
         to: "Completed"
         id: endstate
       - platform: state
-        entity_id: sensor.yarbo_auto_plan_status
+        entity_id: sensor.yarbocadenceeq_auto_plan_status
         to: "Waypoint Complete"
         id: endstate
       - platform: state
-        entity_id: sensor.yarbo_auto_plan_status
+        entity_id: sensor.yarbocadenceeq_auto_plan_status
         from:
           - "Cleaning"
           - "Calculating Route"
@@ -1631,7 +1912,7 @@ automation:
           - "{{ trigger.id == 'left_active' }}"
           - "{{ trigger.to_state.state not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}"
         then:
-          - wait_template: "{{ states('sensor.yarbo_recharging_status') == 'Charging' }}"
+          - wait_template: "{{ states('sensor.yarbocadenceeq_recharging_status') == 'Charging' }}"
             timeout: "00:05:00"
             continue_on_timeout: true
       # Decide whether this counts as a completion.
@@ -1640,7 +1921,7 @@ automation:
           {% set ran_enough = (as_timestamp(now())
               - as_timestamp(states('input_datetime.yarbocadenceeq_current_job_started'))) / 3600
               >= 0.5 * (states('sensor.yarbocadenceeq_active_plan_cut_hours') | float(3.5)) %}
-          {% set charging = states('sensor.yarbo_recharging_status') == 'Charging' %}
+          {% set charging = states('sensor.yarbocadenceeq_recharging_status') == 'Charging' %}
           {% set left_real = trigger.id == 'left_active'
               and trigger.to_state.state not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
           {{ trigger.id == 'endstate'
@@ -1656,7 +1937,7 @@ automation:
           name: "Yarbo Auto"
           message: >
             Stamped cut completion (via {{ trigger.id }};
-            recharging={{ states('sensor.yarbo_recharging_status') }}).
+            recharging={{ states('sensor.yarbocadenceeq_recharging_status') }}).
       - service: notify.persistent_notification
         data:
           title: "Yarbo: cut complete"
@@ -1711,7 +1992,7 @@ automation:
         event: start
     action:
       - wait_template: >
-          {{ states('sensor.yarbo_battery') not in ['unknown','unavailable'] }}
+          {{ states('sensor.yarbocadenceeq_battery') not in ['unknown','unavailable'] }}
         timeout: "00:05:00"
         continue_on_timeout: true
       - delay: "00:00:05"

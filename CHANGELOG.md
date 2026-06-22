@@ -3,6 +3,23 @@
 All notable changes to this project are documented here. This project aims to
 follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Added a YarboHA adapter layer so the package/dashboard use stable
+  `yarbocadenceeq_*` entities instead of assuming native `yarbo_*` entity IDs.
+- Added auto-detection for single-device YarboHA installs, plus a slug override
+  helper/status row for serial-prefixed or multi-device setups.
+- Added weather entity auto-detection/override and dashboard status rows so
+  installs no longer fail when the weather entity is not `weather.openweathermap`.
+- Replaced the hard-coded native plan dropdown with
+  `select.yarbocadenceeq_plan_select`.
+- Numeric sensors with missing inputs now become unavailable cleanly instead of
+  emitting invalid `unknown`/`unavailable` numeric states.
+- The head gate now accepts YarboHA's `Mower Pro` value as a valid mower head.
+- The soil moisture gate now defaults to off, so installs without soil sensors do
+  not block mowing by default.
+
 ## [1.0.0] — 2026-06-21
 
 First public release. Condition-aware autonomous mowing for Yarbo on Home

@@ -41,7 +41,7 @@ views:
             entities:
               - entity: input_boolean.yarbocadenceeq_auto_enabled
                 name: 🟢 Mowing (master — expose to HomeKit)
-              - entity: select.yarbo_plan_select
+              - entity: select.yarbocadenceeq_plan_select
                 name: Plan to run (from Yarbo)
               - type: divider
               - entity: input_datetime.yarbocadenceeq_last_cut_completed
@@ -55,7 +55,17 @@ views:
             show_header_toggle: false
             entities:
               - entity: input_text.yarbocadenceeq_device_slug
-                name: Yarbo entity slug
+                name: Yarbo slug override
+              - entity: sensor.yarbocadenceeq_device_slug_effective
+                name: Active Yarbo slug
+              - entity: sensor.yarbocadenceeq_device_slug_status
+                name: Yarbo slug status
+              - entity: input_text.yarbocadenceeq_weather_entity
+                name: Weather entity override
+              - entity: sensor.yarbocadenceeq_weather_entity_effective
+                name: Active weather entity
+              - entity: sensor.yarbocadenceeq_weather_entity_status
+                name: Weather entity status
               - entity: input_number.yarbocadenceeq_min_battery_percent
                 name: Min battery to dispatch
               - entity: input_boolean.yarbocadenceeq_allow_medium_rtk
@@ -125,11 +135,11 @@ views:
               ## 🤖 Next cut: _calculating…_
               {% else %}
               {% set secs = (as_timestamp(t) - as_timestamp(now())) | int %}
-              {% set running = states('sensor.yarbo_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+              {% set running = states('sensor.yarbocadenceeq_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
               {% if running %}
               # 🟢 Mowing now
               **{{ states('sensor.yarbocadenceeq_plan_phase') }}** ·
-              battery {{ states('sensor.yarbo_battery') }}%
+              battery {{ states('sensor.yarbocadenceeq_battery') }}%
               {% elif secs <= 0 %}
               # ⏱️ Next cut: **due now**
               {% else %}
@@ -160,7 +170,7 @@ views:
                   yellow: 50
                   red: 60
               - type: gauge
-                entity: sensor.yarbo_battery
+                entity: sensor.yarbocadenceeq_battery
                 name: Battery
                 unit: "%"
                 min: 0
@@ -199,13 +209,13 @@ views:
                 label: Yarbo
               - entity: binary_sensor.yarbocadenceeq_yarbo_nominal
                 name: ☑️ Yarbo nominal
-              - entity: binary_sensor.yarbo_online
+              - entity: binary_sensor.yarbocadenceeq_online
                 name: Online
               - entity: binary_sensor.yarbocadenceeq_on_dock_sticky
                 name: Home (on dock)
-              - entity: sensor.yarbo_battery
+              - entity: sensor.yarbocadenceeq_battery
                 name: Battery
-              - entity: sensor.yarbo_rtk_signal
+              - entity: sensor.yarbocadenceeq_rtk_signal
                 name: RTK / GPS signal
               - entity: binary_sensor.yarbocadenceeq_onboard_rain_detected
                 name: Onboard rain detected
@@ -259,25 +269,25 @@ views:
             show_header_toggle: false
             state_color: true
             entities:
-              - entity: binary_sensor.yarbo_charging
+              - entity: binary_sensor.yarbocadenceeq_charging
                 name: Actively charging
               - entity: sensor.yarbocadenceeq_charging_power_display
                 name: Charging power
-              - entity: sensor.yarbo_head_type
+              - entity: sensor.yarbocadenceeq_head_type
                 name: Head type
               - entity: sensor.yarbocadenceeq_plan_phase
                 name: Plan phase
-              - entity: sensor.yarbo_auto_plan_pause_status
+              - entity: sensor.yarbocadenceeq_auto_plan_pause_status
                 name: Pause reason
-              - entity: sensor.yarbo_recharging_status
+              - entity: sensor.yarbocadenceeq_recharging_status
                 name: Recharging status
-              - entity: sensor.yarbo_activity
+              - entity: sensor.yarbocadenceeq_activity
                 name: Activity (awake/standby)
-              - entity: sensor.yarbo_gps_satellites
+              - entity: sensor.yarbocadenceeq_gps_satellites
                 name: GPS satellites
-              - entity: sensor.yarbo_network
+              - entity: sensor.yarbocadenceeq_network
                 name: Network (must be Halow)
-              - entity: sensor.yarbo_rain_sensor
+              - entity: sensor.yarbocadenceeq_rain_sensor
                 name: Onboard rain value (live)
               - entity: sensor.yarbocadenceeq_onboard_rain_mean
                 name: Onboard rain (avg)
@@ -382,10 +392,10 @@ views:
           ## 🤖 Next cut: _calculating…_
           {% else %}
           {% set secs = (as_timestamp(t) - as_timestamp(now())) | int %}
-          {% set running = states('sensor.yarbo_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set running = states('sensor.yarbocadenceeq_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
           {% if running %}
           # 🟢 Mowing now
-          **{{ states('sensor.yarbocadenceeq_plan_phase') }}** · battery {{ states('sensor.yarbo_battery') }}%
+          **{{ states('sensor.yarbocadenceeq_plan_phase') }}** · battery {{ states('sensor.yarbocadenceeq_battery') }}%
           {% elif secs <= 0 %}
           # ⏱️ Next cut: **due now**
           {% else %}
@@ -430,7 +440,7 @@ views:
               yellow: 50
               red: 60
           - type: gauge
-            entity: sensor.yarbo_battery
+            entity: sensor.yarbocadenceeq_battery
             name: Battery
             unit: "%"
             min: 0
@@ -449,7 +459,7 @@ views:
         entities:
           - entity: input_boolean.yarbocadenceeq_auto_enabled
             name: 🟢 Mowing (master)
-          - entity: select.yarbo_plan_select
+          - entity: select.yarbocadenceeq_plan_select
             name: Plan to run
           - entity: input_datetime.yarbocadenceeq_last_cut_completed
             name: Last cut completed
@@ -476,17 +486,17 @@ views:
         show_header_toggle: false
         state_color: true
         entities:
-          - entity: binary_sensor.yarbo_online
+          - entity: binary_sensor.yarbocadenceeq_online
             name: Online
           - entity: binary_sensor.yarbocadenceeq_on_dock_sticky
             name: Home (on dock)
-          - entity: sensor.yarbo_battery
+          - entity: sensor.yarbocadenceeq_battery
             name: Battery
-          - entity: binary_sensor.yarbo_charging
+          - entity: binary_sensor.yarbocadenceeq_charging
             name: Actively charging
-          - entity: sensor.yarbo_recharging_status
+          - entity: sensor.yarbocadenceeq_recharging_status
             name: Recharging status
-          - entity: sensor.yarbo_rtk_signal
+          - entity: sensor.yarbocadenceeq_rtk_signal
             name: RTK / GPS signal
           - entity: sensor.yarbocadenceeq_plan_phase
             name: Plan phase
@@ -545,6 +555,10 @@ views:
         entities:
           - entity: input_number.yarbocadenceeq_min_battery_percent
             name: Min battery to dispatch
+          - entity: sensor.yarbocadenceeq_device_slug_status
+            name: Yarbo slug status
+          - entity: sensor.yarbocadenceeq_weather_entity_status
+            name: Weather entity status
           - entity: input_number.yarbocadenceeq_active_cut_hours
             name: Active plan avg run time
           - entity: input_number.yarbocadenceeq_hot_temp_threshold_f

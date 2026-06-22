@@ -11,10 +11,10 @@ plus a **dashboard**. All entities use the prefix `yarbocadenceeq_`.
 | Requirement | Notes |
 |---|---|
 | **Home Assistant** | Any recent version. You need a way to edit YAML files — File Editor add-on, Studio Code Server, or Samba/SSH. |
-| **YarboHA integration** | Install via HACS (uses `yarbo-data-sdk`). Your Yarbo must be paired and its entities present — by default prefixed `yarbo_` (e.g. `sensor.yarbo_battery`, `select.yarbo_plan_select`). |
-| **OpenWeatherMap** | The `weather.openweathermap` entity is used for forecast rain + temperature. |
+| **YarboHA integration** | Install via HACS (uses `yarbo-data-sdk`). Your Yarbo must be paired and its entities present. YarboHA commonly prefixes entities with the robot serial, e.g. `sensor.25070102ovpie639_battery`. |
+| **Weather integration** | Any `weather.*` entity with forecast support. `weather.openweathermap` is preferred when present; otherwise the package can auto-detect a single weather entity or you can set an override in the dashboard. |
 | **Soil moisture sensor(s)** | Optional but recommended. Any moisture/soil sensors that report a %; configured by entity ID in a UI field (see step 4). The gate can also be switched off entirely. |
-| **Mower head attached** | The logic refuses to dispatch unless the head type reads `Mower`. |
+| **Mower head attached** | The logic refuses to dispatch unless the head type reads `Mower` or `Mower Pro`. |
 
 Files you'll install:
 - `yarbo_cadence_eq.yaml` — the package
@@ -52,14 +52,25 @@ Then create the folder `config/packages/` if it doesn't exist.
 
 ## 4. Point it at YOUR entities
 
-The package references a few entity IDs directly. Open `yarbo_cadence_eq.yaml`
-and confirm/edit these to match your setup:
+The package creates a stable `yarbocadenceeq_*` adapter layer over YarboHA's
+entity IDs. If there is exactly one YarboHA device, it auto-detects the slug from
+the native `select.<slug>_plan_select` / `select.<slug>_working_state` entities.
+If you have multiple Yarbo devices, or auto-detection does not find yours, set the
+dashboard's **"Yarbo slug override"** field to the prefix before `_battery`.
 
-- **Yarbo entity prefix (slug).** Defaults to `yarbo`. If your Yarbo entities use
-  a different prefix, you'll change the **"YarboCadenceEQ: Yarbo entity slug"**
-  helper *after* load (no file edit needed). Note: the dashboard's plan dropdown
-  is hard-coded to `select.yarbo_plan_select` — if your slug differs, edit that
-  one line in the dashboard too.
+Examples:
+
+| Battery entity | Slug override |
+|---|---|
+| `sensor.25070102ovpie639_battery` | `25070102ovpie639` |
+| `sensor.yarbo_battery` | `yarbo` |
+
+The dashboard uses `select.yarbocadenceeq_plan_select`, so you should not edit the
+dashboard for serial-specific YarboHA entity IDs.
+
+- **Yarbo slug status.** On the dashboard's Tuning card, **Yarbo slug status**
+  should read `OK`. If it says `Set Yarbo slug`, search Developer Tools → States
+  for your Yarbo battery entity and fill in **Yarbo slug override**.
 - **Soil moisture sensors** — configured in the UI, no file edit. After load,
   open the dashboard's **Tuning → Moisture sensors** card and put your sensor
   entity IDs in the **"Moisture sensor entity IDs"** field as a comma-separated
@@ -67,20 +78,26 @@ and confirm/edit these to match your setup:
   ```
   sensor.gw3000b_wifi08ab_soil_ch1, sensor.gw3000b_wifi08ab_soil_ch2, sensor.gw3000b_wifi08ab_soil_ch3
   ```
-  Replace them with yours. The gate uses the **wettest** listed zone. Toggle
-  **"Use moisture sensors"** off to disable the moisture gate entirely. If the
-  gate is on but every listed sensor is unavailable, dispatch is **blocked** and
-  you get a notification (a wet-but-unknown lawn shouldn't be mowed).
+  Replace them with yours, then turn **"Use moisture sensors"** on if you want
+  soil moisture to gate mowing. The gate is **off by default**. When enabled, it
+  uses the **wettest** listed zone. If the gate is on but every listed sensor is
+  unavailable, dispatch is **blocked** and you get a notification (a
+  wet-but-unknown lawn shouldn't be mowed).
   > The entity-ID field is capped at **255 characters** — enough for ~8–10 typical
   > IDs. If you have more sensors than fit, shorten their entity IDs or open an issue.
-- **Weather.** If your weather entity isn't `weather.openweathermap`, search the
-  file for it and replace.
+- **Weather.** Forecast timing uses the dashboard's **Weather entity override**
+  only when you fill it in. Leave it blank to use `weather.openweathermap` when
+  present, or the only `weather.*` entity if your Home Assistant has exactly one.
+  **Weather entity status** should read `OK`. If it says `Set weather entity`,
+  search Developer Tools → States for your weather entity ID, for example
+  `weather.forecast_home`, and put that full entity ID in the override field.
 
 ### Enable the Yarbo rain sensor
-The native **`sensor.yarbo_rain_sensor`** is **disabled by default** in the
+The native **`sensor.<slug>_rain_sensor`** may be disabled by default in the
 integration. The rain logic needs it. Go to **Settings → Devices & Services →
-Yarbo → entities**, find *Rain Sensor*, and **enable** it. (The package reads a
-30-second rolling average of this value.)
+Yarbo → entities**, find *Rain Sensor*, and **enable** it. The package exposes it
+as `sensor.yarbocadenceeq_rain_sensor` and reads a 30-second rolling average of
+that value.
 
 ---
 
@@ -114,18 +131,22 @@ template error, and re-confirm step 2 (loaded as a package, not pasted into
 
 ## 7. First-run setup
 
-1. **Pick your plan.** On the **Controls** card, open **"Plan to run (from
+1. **Confirm the slug.** On the **Tuning** card, **Yarbo slug status** should say
+   `OK`. If not, set **Yarbo slug override** to your YarboHA entity prefix.
+2. **Pick your plan.** On the **Controls** card, open **"Plan to run (from
    Yarbo)"** and select your mowing plan. If the list is empty, press **"Refresh
    all Yarbo data"** once, then try again. Your choice is remembered across
    restarts.
-2. **Tune the sliders.** In the **Tuning** card (all prefixed *YarboCadenceEQ:*):
+3. **Tune the sliders.** In the **Tuning** card (all prefixed *YarboCadenceEQ:*):
+   - **Use moisture sensors** — off by default; enable only if you have configured
+     soil sensors.
    - **Max allowed soil moisture** — cut only when the wettest zone is below this.
    - **Min battery to dispatch** — defaults to 95.
    - **Hot temp threshold** + **Sun buffers** — heat pause only in direct sun.
    - **Onboard rain trigger value** + **Rain must persist** — spike protection.
    - **Target cut interval** / **Min hours between cuts** — these now go as low as
      **1 hour** for testing.
-3. **Leave the master switch OFF** until you've reviewed everything, then flip
+4. **Leave the master switch OFF** until you've reviewed everything, then flip
    **🟢 Mowing** on.
 
 ---
@@ -200,7 +221,7 @@ The only way to get clean entity_ids back is a one-time registry purge:
 |---|---|
 | Every template sensor = "Entity not found", but helpers exist | Either the package was pasted into `configuration.yaml` (key collision) / you reloaded instead of restarting **or** stale entity_ids from an earlier rename don't match the dashboard — see §10 clean reset. |
 | Entity IDs look like `automation.lawn_..._3` though the names are right | Registry cruft from renaming a live system. Do the §10 clean reset. |
-| Battery/sensors read 0 or unknown | Slug mismatch — set the **Yarbo entity slug** helper, or your soil/weather entity IDs don't match (step 4). |
+| Battery/sensors read 0 or unknown | Slug mismatch — set **Yarbo slug override**, or your soil/weather entity IDs don't match (step 4). |
 | Status says "No plan selected" | Pick a plan on the dropdown; press **Refresh all Yarbo data** if it's empty. |
 | Status says "Waiting for STRONG GPS/RTK" | Normal on cloudy/cold mornings — it wakes the robot and refreshes GPS, retrying every 5 min until RTK is Strong. |
 | Rain cancels a cut the instant it starts | The onboard sensor spikes at head startup; raise **Rain must persist** (default 60s) or the trigger value. |

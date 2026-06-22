@@ -9,7 +9,7 @@ ones.
 ## Shipped in 1.0
 
 - **Single-source decision logic.** Every dispatch condition lives in one sensor
-  (`sensor.yarbocadenceeq_cut_blocker`) that reads native robot state directly and
+  (`sensor.yarbocadenceeq_cut_blocker`) that reads normalized YarboHA adapter state and
   returns `OK` or a human-readable reason list. The dashboard status and the
   `ok_to_cut_now` binary are thin wrappers over it.
 - **Dock latch.** The robot exposes no reliable "is docked" boolean, and its
