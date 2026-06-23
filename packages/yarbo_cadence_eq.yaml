@@ -634,20 +634,27 @@ template:
             true
           {% endif %}
 
-      # Robot hardware/state readiness rollup, shown in Decision metrics. Mirrors
-      # exactly the rows displayed under it (online, on dock, battery >= min, RTK,
-      # onboard rain) so the checkbox can never be off without a visible reason.
+      # Robot health rollup, shown in Decision metrics. ON in either of the two
+      # states where the robot is fine: actively mowing (it's out doing its job),
+      # OR dispatch-ready on the dock (online, docked, battery >= min, RTK good, no
+      # onboard rain — the rows displayed under it). OFF only when neither holds,
+      # i.e. something's actually wrong. NOTE: because "mowing" counts as nominal,
+      # this can read On while the "Home (on dock)" row below it shows Off — that's
+      # expected during a cut, not a contradiction.
       - name: "YarboCadenceEQ: Yarbo Nominal"
         unique_id: yarbocadenceeq_yarbo_nominal
         state: >
           {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
-          {{ is_state('binary_sensor.yarbocadenceeq_online','on')
+          {% set mowing = states('sensor.yarbocadenceeq_auto_plan_status')
+                          in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set ready_on_dock = is_state('binary_sensor.yarbocadenceeq_online','on')
              and is_state('input_boolean.yarbocadenceeq_docked','on')
              and states('sensor.yarbocadenceeq_battery') | float(0)
                  >= states('input_number.yarbocadenceeq_min_battery_percent') | float(100)
              and (sig == 'Strong'
                   or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on')))
-             and is_state('binary_sensor.yarbocadenceeq_onboard_rain_detected','off') }}
+             and is_state('binary_sensor.yarbocadenceeq_onboard_rain_detected','off') %}
+          {{ mowing or ready_on_dock }}
 
       - name: "YarboCadenceEQ: Should Heat Pause"
         unique_id: yarbocadenceeq_should_heat_pause

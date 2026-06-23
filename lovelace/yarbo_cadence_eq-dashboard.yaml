@@ -131,9 +131,7 @@ views:
               {% set secs = (as_timestamp(t) - as_timestamp(now())) | int %}
               {% set running = states('sensor.yarbo_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
               {% if running %}
-              # 🟢 Mowing now
-              **{{ states('sensor.yarbocadenceeq_plan_phase') }}** ·
-              battery {{ states('sensor.yarbo_battery') }}%
+              # 🟢 Mowing Now - Battery {{ states('sensor.yarbo_battery') }}%
               {% elif secs <= 0 %}
               # ⏱️ Next cut: **due now**
               {% else %}
@@ -178,15 +176,24 @@ views:
           # ---- GO / NO-GO (multi-row status) ---------------------------------
           - type: markdown
             content: >
+              {% set running = states('sensor.yarbocadenceeq_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+              {% set heat = is_state('input_boolean.yarbocadenceeq_heat_paused','on') %}
               {% set b = states('sensor.yarbocadenceeq_cut_blocker') %}
               {% set ok = (b == 'OK') %}
-              ### {{ '✅ OK to cut now' if ok else '⛔ Not cutting' }}
-
-              {% if ok %}
+              {% if running %}
+              ### 🟢 Mowing
+              **Plan:**  {{ states('sensor.yarbocadenceeq_active_plan_name') }}
+              {% elif heat %}
+              ### ⏸️ Heat-paused
+              **Status:**  waiting to resume
+              {% elif ok %}
+              ### ✅ OK to cut now
               **Status:**  Nominal — clear to cut
               {% elif b in ['unknown','unavailable'] %}
+              ### ⏳ Updating…
               **Status:**  updating…
               {% else %}
+              ### ⛔ Not cutting
               **Status:**  Blocked
               {% for r in b.split(', ') %}
               - {{ r }}
@@ -390,8 +397,7 @@ views:
           {% set secs = (as_timestamp(t) - as_timestamp(now())) | int %}
           {% set running = states('sensor.yarbo_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
           {% if running %}
-          # 🟢 Mowing now
-          **{{ states('sensor.yarbocadenceeq_plan_phase') }}** · battery {{ states('sensor.yarbo_battery') }}%
+          # 🟢 Mowing Now - Battery {{ states('sensor.yarbo_battery') }}%
           {% elif secs <= 0 %}
           # ⏱️ Next cut: **due now**
           {% else %}
@@ -406,15 +412,24 @@ views:
       # 2) Go / No-Go with reasons -------------------------------------------
       - type: markdown
         content: >
+          {% set running = states('sensor.yarbocadenceeq_auto_plan_status') in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set heat = is_state('input_boolean.yarbocadenceeq_heat_paused','on') %}
           {% set b = states('sensor.yarbocadenceeq_cut_blocker') %}
           {% set ok = (b == 'OK') %}
-          ### {{ '✅ OK to cut now' if ok else '⛔ Not cutting' }}
-
-          {% if ok %}
+          {% if running %}
+          ### 🟢 Mowing
+          **Plan:**  {{ states('sensor.yarbocadenceeq_active_plan_name') }}
+          {% elif heat %}
+          ### ⏸️ Heat-paused
+          **Status:**  waiting to resume
+          {% elif ok %}
+          ### ✅ OK to cut now
           **Status:**  Nominal — clear to cut
           {% elif b in ['unknown','unavailable'] %}
+          ### ⏳ Updating…
           **Status:**  updating…
           {% else %}
+          ### ⛔ Not cutting
           **Status:**  Blocked
           {% for r in b.split(', ') %}
           - {{ r }}
