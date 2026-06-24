@@ -529,13 +529,11 @@ sensor:
   - platform: statistics
     name: "YarboCadenceEQ: Onboard Rain Mean"
     unique_id: yarbocadenceeq_onboard_rain_mean
-    # Source the RAW integration sensor, not the yarbocadenceeq_ template mirror.
-    # The statistics platform needs a stable, always-numeric source bound at setup;
-    # a template mirror can emit 'unknown'/'unavailable' during slug resolution (and
-    # was a victim of the entity_id ghosting), which makes the mean go Unknown.
-    # NOTE: statistics entity_id must be a literal (no templates) — if your robot
-    # slug isn't "yarbo", change sensor.yarbo_rain_sensor to sensor.<slug>_rain_sensor.
-    entity_id: sensor.yarbo_rain_sensor
+    # The statistics platform requires a literal entity_id — it cannot read templates
+    # or the slug override at runtime. Using the yarbocadenceeq_ template adapter here
+    # means the mean may briefly go Unknown at startup while the slug resolves, but
+    # recovers within the 30-second window and respects slug changes without hardcoding.
+    entity_id: sensor.yarbocadenceeq_rain_sensor
     state_characteristic: mean
     max_age:
       seconds: 30
