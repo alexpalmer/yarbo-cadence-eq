@@ -5,20 +5,45 @@ follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-06-24
+
+### Added
+- YarboHA adapter layer: package and dashboard now use stable `yarbocadenceeq_*`
+  entities instead of assuming native `yarbo_*` entity IDs.
+- Auto-detection for single-device YarboHA installs, plus a slug-override helper
+  and status row for serial-prefixed or multi-device setups.
+- Weather entity auto-detection/override and dashboard status rows — installs no
+  longer fail when the weather entity is not `weather.openweathermap`.
+- Per-slot hours-since-cut sensors (`sensor.yarbocadenceeq_plan_N_hours_since_last_cut`)
+  surfaced on both desktop and phone dashboards.
+- Latest-start-time field per slot; multi-area slot-scheduling documentation.
+- `sensor.yarbocadenceeq_next_queued_slot` drives the "due now" pending-slot
+  display on both dashboard views, replacing a verbose inline Jinja loop.
+
 ### Changed
-- Added a YarboHA adapter layer so the package/dashboard use stable
-  `yarbocadenceeq_*` entities instead of assuming native `yarbo_*` entity IDs.
-- Added auto-detection for single-device YarboHA installs, plus a slug override
-  helper/status row for serial-prefixed or multi-device setups.
-- Added weather entity auto-detection/override and dashboard status rows so
-  installs no longer fail when the weather entity is not `weather.openweathermap`.
-- Replaced the hard-coded native plan dropdown with
-  `select.yarbocadenceeq_plan_select`.
+- Replaced hard-coded native plan dropdown with `select.yarbocadenceeq_plan_select`.
+- Fixed per-slot sensor slugs: `planN_*` corrected to `plan_N_*` throughout the
+  dashboard and template sensors (affects `hours_since_last_cut` and
+  `next_cut_prediction` references).
+- Fixed `sensor.yarbocadenceeq_next_cut_prediction` slug in two package template
+  sensors (`next_scheduled_cut` and `next_queued_slot`).
+- Added blank-line spacers between slot entries in plan-schedule summary cards so
+  entries no longer run together visually.
+- Soil moisture gate now defaults to off — installs without soil sensors are
+  unblocked by default.
+- Head gate now accepts YarboHA's `Mower Pro` value as a valid mower head.
 - Numeric sensors with missing inputs now become unavailable cleanly instead of
   emitting invalid `unknown`/`unavailable` numeric states.
-- The head gate now accepts YarboHA's `Mower Pro` value as a valid mower head.
-- The soil moisture gate now defaults to off, so installs without soil sensors do
-  not block mowing by default.
+
+### Fixed
+- Forecast cache: last-good value is now retained so a failed weather poll does
+  not erase the cached forecast.
+- Dock latch: GPS proximity is now a primary factor alongside charging state,
+  preventing false-docked conditions.
+- Active-mow status display: big card battery line, go/no-go mowing state, and
+  Yarbo nominal flag are now correct while a cut is running.
+- Rain probability: 0–100 slider added; current rain probability shown live on
+  the dashboard.
 
 ## [1.0.0] — 2026-06-21
 

@@ -46,13 +46,13 @@ views:
               - type: divider
               - entity: input_number.yarbocadenceeq_active_plan_slot
                 name: Running slot (system — 0=idle)
-              - entity: sensor.yarbocadenceeq_plan1_hours_since_last_cut
+              - entity: sensor.yarbocadenceeq_plan_1_hours_since_last_cut
                 name: Hours since last cut · Slot 1
-              - entity: sensor.yarbocadenceeq_plan2_hours_since_last_cut
+              - entity: sensor.yarbocadenceeq_plan_2_hours_since_last_cut
                 name: Hours since last cut · Slot 2
-              - entity: sensor.yarbocadenceeq_plan3_hours_since_last_cut
+              - entity: sensor.yarbocadenceeq_plan_3_hours_since_last_cut
                 name: Hours since last cut · Slot 3
-              - entity: sensor.yarbocadenceeq_plan4_hours_since_last_cut
+              - entity: sensor.yarbocadenceeq_plan_4_hours_since_last_cut
                 name: Hours since last cut · Slot 4
 
           # ---- TUNING (grouped sub-sections) ----------------------------------
@@ -215,19 +215,10 @@ views:
               # 🟢 Mowing Now - Battery {{ states('sensor.yarbocadenceeq_battery') }}%
               {% elif secs <= 0 %}
               # ⏱️ Next cut: **due now**
-              {% set ns_due = namespace(slots=[]) %}
-              {% for n in [1,2,3,4] %}
-                {% set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
-                {% set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim %}
-                {% if en and pn not in ['','unknown','unavailable'] %}
-                  {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
-                  {% if pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) %}
-                    {% set ns_due.slots = ns_due.slots + ['Slot ' ~ n ~ ' · ' ~ pn] %}
-                  {% endif %}
-                {% endif %}
-              {% endfor %}
-              {% if ns_due.slots | length > 0 %}
-              Pending: **{{ ns_due.slots | join(', ') }}**
+              {% set ns2_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) %}
+              {% set ns2_plan = states('input_text.yarbocadenceeq_plan' ~ ns2_slot ~ '_yarbo_plan') | trim if ns2_slot > 0 else '' %}
+              {% if ns2_slot > 0 %}
+              Slot {{ ns2_slot }}{% if ns2_plan %} · {{ ns2_plan }}{% endif %}
               {% endif %}
               {% else %}
               {% set d = (secs // 86400) %}
@@ -295,7 +286,7 @@ views:
               {%- set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim -%}
               {%- if en and pn not in ['','unknown','unavailable'] -%}
               {%- set ns.any = true -%}
-              {%- set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') -%}
+              {%- set pred = states('sensor.yarbocadenceeq_plan_' ~ n ~ '_next_cut_prediction') -%}
               {%- set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') -%}
               {%- set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') -%}
               {%- set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') -%}
@@ -334,6 +325,7 @@ views:
               {%- set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}
               {{ '✅ Eligible — dispatching next scheduler run' if blocker == 'OK' else '🔑 Eligible — held by: ' ~ blocker }}
               {%- endif %}
+              {{ '\n\n' }}
               {%- endif -%}
               {%- endfor %}
               {%- if not ns.any %}
@@ -567,18 +559,9 @@ views:
           # 🟢 Mowing Now - Battery {{ states('sensor.yarbocadenceeq_battery') }}%
           {% elif secs <= 0 %}
           # ⏱️ Next cut: **due now**
-          {% set ns_due = namespace(slots=[]) %}
-          {% for n in [1,2,3,4] %}
-            {% set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
-            {% set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim %}
-            {% if en and pn not in ['','unknown','unavailable'] %}
-              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
-              {% if pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) %}
-                {% set ns_due.slots = ns_due.slots + ['S' ~ n ~ ' · ' ~ pn] %}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {% if ns_due.slots | length > 0 %}Pending: **{{ ns_due.slots | join(', ') }}**{% endif %}
+          {% set ns2_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) %}
+          {% set ns2_plan = states('input_text.yarbocadenceeq_plan' ~ ns2_slot ~ '_yarbo_plan') | trim if ns2_slot > 0 else '' %}
+          {% if ns2_slot > 0 %}Slot {{ ns2_slot }}{% if ns2_plan %} · {{ ns2_plan }}{% endif %}{% endif %}
           {% else %}
           {% set d = (secs // 86400) %}
           {% set h = (secs % 86400) // 3600 %}
@@ -659,13 +642,13 @@ views:
           - entity: input_datetime.yarbocadenceeq_last_cut_completed
             name: Last cut (global)
           - type: divider
-          - entity: sensor.yarbocadenceeq_plan1_hours_since_last_cut
+          - entity: sensor.yarbocadenceeq_plan_1_hours_since_last_cut
             name: Hours since cut · Slot 1
-          - entity: sensor.yarbocadenceeq_plan2_hours_since_last_cut
+          - entity: sensor.yarbocadenceeq_plan_2_hours_since_last_cut
             name: Hours since cut · Slot 2
-          - entity: sensor.yarbocadenceeq_plan3_hours_since_last_cut
+          - entity: sensor.yarbocadenceeq_plan_3_hours_since_last_cut
             name: Hours since cut · Slot 3
-          - entity: sensor.yarbocadenceeq_plan4_hours_since_last_cut
+          - entity: sensor.yarbocadenceeq_plan_4_hours_since_last_cut
             name: Hours since cut · Slot 4
 
       # 4b) Plan schedule summary -------------------------------------------
@@ -690,7 +673,7 @@ views:
           {%- set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim -%}
           {%- if en and pn not in ['','unknown','unavailable'] -%}
           {%- set ns.any = true -%}
-          {%- set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') -%}
+          {%- set pred = states('sensor.yarbocadenceeq_plan_' ~ n ~ '_next_cut_prediction') -%}
           {%- set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') -%}
           {%- set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') -%}
           {%- set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') -%}
@@ -728,6 +711,7 @@ views:
           {%- set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}
           {{ '✅ ready' if blocker == 'OK' else '🔑 held: ' ~ blocker }}
           {%- endif %}
+          {{ '\n\n' }}
           {%- endif -%}
           {%- endfor %}
           {%- if not ns.any %}

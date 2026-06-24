@@ -1658,7 +1658,7 @@ template:
           {% for n in [1,2,3,4] %}
             {% set enabled = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
             {% if enabled %}
-              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
+              {% set pred = states('sensor.yarbocadenceeq_plan_' ~ n ~ '_next_cut_prediction') %}
               {% if pred not in ['unknown','unavailable','none'] %}
                 {% set pred_ts = as_timestamp(pred) %}
                 {% if ns.earliest is none or pred_ts < ns.earliest %}
@@ -1683,7 +1683,7 @@ template:
           {% set ns = namespace(slot=0, earliest=none) %}
           {% for n in [1,2,3,4] %}
             {% if is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
-              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
+              {% set pred = states('sensor.yarbocadenceeq_plan_' ~ n ~ '_next_cut_prediction') %}
               {% if pred not in ['unknown','unavailable','none'] %}
                 {% set pred_ts = as_timestamp(pred) %}
                 {% if ns.earliest is none or pred_ts < ns.earliest %}
