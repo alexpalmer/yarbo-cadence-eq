@@ -846,7 +846,7 @@ template:
       - name: "YarboCadenceEQ: Temp Safe Now"
         unique_id: yarbocadenceeq_temp_safe_now
         state: >
-          {% set hot = states('sensor.yarbocadenceeq_current_temp_f') | float(0)
+          {% set hot = states('sensor.yarbocadenceeq_current_temp_c') | float(0)
                        >= states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
           {% if is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','on') %}
             {{ not hot }}
@@ -879,7 +879,7 @@ template:
       - name: "YarboCadenceEQ: Should Heat Pause"
         unique_id: yarbocadenceeq_should_heat_pause
         state: >
-          {% set hot = states('sensor.yarbocadenceeq_current_temp_f') | float(0)
+          {% set hot = states('sensor.yarbocadenceeq_current_temp_c') | float(0)
                        >= states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
           {{ hot and is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','on') }}
 
@@ -887,7 +887,7 @@ template:
         unique_id: yarbocadenceeq_should_heat_resume
         state: >
           {% set th = states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
-          {% set cool = states('sensor.yarbocadenceeq_current_temp_f') | float(999) < (th - 2) %}
+          {% set cool = states('sensor.yarbocadenceeq_current_temp_c') | float(999) < (th - 2) %}
           {{ is_state('input_boolean.yarbocadenceeq_heat_paused','on')
              and (cool or is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','off')) }}
 
@@ -1127,9 +1127,9 @@ template:
             {{ ((as_timestamp(now()) - as_timestamp(last)) / 3600) | round(1) }}
           {% endif %}
 
-      - name: "YarboCadenceEQ: Current Temp F"
-        unique_id: yarbocadenceeq_current_temp_f
-        unit_of_measurement: "°F"
+      - name: "YarboCadenceEQ: Current Temp C"
+        unique_id: yarbocadenceeq_current_temp_c
+        unit_of_measurement: "°C"
         availability: >
           {% set wx = states('sensor.yarbocadenceeq_weather_entity_effective') %}
           {{ wx not in ['unknown','unavailable','none','None','']
@@ -1195,9 +1195,9 @@ template:
         state: >
           {{ 'True' if is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','on') else 'False' }}
 
-      - name: "YarboCadenceEQ: Today High F"
-        unique_id: yarbocadenceeq_today_high_f
-        unit_of_measurement: "°F"
+      - name: "YarboCadenceEQ: Today High C"
+        unique_id: yarbocadenceeq_today_high_c
+        unit_of_measurement: "°C"
         # Prefer the DAILY forecast high (only populated in One Call API 3.0
         # mode). On the free forecast tier the daily list is empty, so fall back
         # to the max temperature across today's HOURLY entries. The 'temperature'
@@ -1923,7 +1923,7 @@ script:
               message: >
                 Plan "{{ plan_name }}" ({{ states('sensor.yarbocadenceeq_active_plan_cut_hours') }}h).
                 Soil {{ states('sensor.yarbocadenceeq_moisture_max') }}%/{{ states('input_number.yarbocadenceeq_moisture_max_percent') }}%,
-                {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F, RTK {{ states('sensor.yarbocadenceeq_rtk_signal') }},
+                {{ states('sensor.yarbocadenceeq_current_temp_c') }}°C, RTK {{ states('sensor.yarbocadenceeq_rtk_signal') }},
                 rain in {{ states('sensor.yarbocadenceeq_hours_until_rain') }}h.
 
   yarbocadenceeq_heat_pause:
@@ -1942,7 +1942,7 @@ script:
       - service: notify.persistent_notification
         data:
           title: "Yarbo: heat pause"
-          message: "{{ states('sensor.yarbocadenceeq_current_temp_f') }}°F in direct sun. Paused and returning to dock."
+          message: "{{ states('sensor.yarbocadenceeq_current_temp_c') }}°C in direct sun. Paused and returning to dock."
 
   yarbocadenceeq_heat_resume:
     alias: "YarboCadenceEQ: Heat resume"
@@ -1964,7 +1964,7 @@ script:
       - service: notify.persistent_notification
         data:
           title: "Yarbo: heat resume"
-          message: "Resuming ({{ states('input_select.yarbocadenceeq_heat_resume_mode') }}). {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F."
+          message: "Resuming ({{ states('input_select.yarbocadenceeq_heat_resume_mode') }}). {{ states('sensor.yarbocadenceeq_current_temp_c') }}°C."
 
   yarbocadenceeq_rain_cancel:
     alias: "YarboCadenceEQ: Rain cancel"
@@ -2027,7 +2027,7 @@ script:
           message: >
             Plan "{{ plan_name }}" slot {{ slot }} ({{ cut_hours }}h).
             {{ 'Pre-rain dispatch. ' if is_rain_dispatch else '' }}
-            {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F,
+            {{ states('sensor.yarbocadenceeq_current_temp_c') }}°C,
             RTK {{ states('sensor.yarbocadenceeq_rtk_signal') }},
             rain in {{ states('sensor.yarbocadenceeq_hours_until_rain') }}h.
 

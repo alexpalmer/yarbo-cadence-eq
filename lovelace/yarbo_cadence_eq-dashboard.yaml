@@ -391,9 +391,9 @@ views:
                 label: Weather
               - entity: binary_sensor.yarbocadenceeq_weather_nominal
                 name: ☑️ Weather conditions nominal
-              - entity: sensor.yarbocadenceeq_current_temp_f
+              - entity: sensor.yarbocadenceeq_current_temp_c
                 name: Current temp
-              - entity: sensor.yarbocadenceeq_today_high_f
+              - entity: sensor.yarbocadenceeq_today_high_c
                 name: Today's high
               - entity: sensor.yarbocadenceeq_current_rain_probability_display
                 name: Current rain probability
@@ -771,7 +771,7 @@ views:
             label: Weather
           - entity: binary_sensor.yarbocadenceeq_weather_nominal
             name: ☑️ Weather conditions nominal
-          - entity: sensor.yarbocadenceeq_current_temp_f
+          - entity: sensor.yarbocadenceeq_current_temp_c
             name: Current temp
           - entity: sensor.yarbocadenceeq_current_rain_probability_display
             name: Current rain probability
