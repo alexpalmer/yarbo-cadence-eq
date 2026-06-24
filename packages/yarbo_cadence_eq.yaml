@@ -163,13 +163,13 @@ input_number:
     # suggested starting value: 52
     unit_of_measurement: "%"
     icon: mdi:water-percent
-  yarbocadenceeq_hot_temp_threshold_f:
-    name: "YarboCadenceEQ: Hot temp threshold (°F)"
-    min: 80
-    max: 110
+  yarbocadenceeq_hot_temp_threshold_c:
+    name: "YarboCadenceEQ: Hot temp threshold (°C)"
+    min: 27
+    max: 43
     step: 1
-    # suggested starting value: 92
-    unit_of_measurement: "°F"
+    # suggested starting value: 33
+    unit_of_measurement: "°C"
     icon: mdi:thermometer-alert
   yarbocadenceeq_sun_buffer_morning_hours:
     name: "YarboCadenceEQ: Sun buffer - morning (h after sunrise)"
@@ -857,7 +857,7 @@ template:
         unique_id: yarbocadenceeq_temp_safe_now
         state: >
           {% set hot = states('sensor.yarbocadenceeq_current_temp_f') | float(0)
-                       >= states('input_number.yarbocadenceeq_hot_temp_threshold_f') | float(92) %}
+                       >= states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
           {% if is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','on') %}
             {{ not hot }}
           {% else %}
@@ -883,13 +883,13 @@ template:
         unique_id: yarbocadenceeq_should_heat_pause
         state: >
           {% set hot = states('sensor.yarbocadenceeq_current_temp_f') | float(0)
-                       >= states('input_number.yarbocadenceeq_hot_temp_threshold_f') | float(92) %}
+                       >= states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
           {{ hot and is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','on') }}
 
       - name: "YarboCadenceEQ: Should Heat Resume"
         unique_id: yarbocadenceeq_should_heat_resume
         state: >
-          {% set th = states('input_number.yarbocadenceeq_hot_temp_threshold_f') | float(92) %}
+          {% set th = states('input_number.yarbocadenceeq_hot_temp_threshold_c') | float(33) %}
           {% set cool = states('sensor.yarbocadenceeq_current_temp_f') | float(999) < (th - 2) %}
           {{ is_state('input_boolean.yarbocadenceeq_heat_paused','on')
              and (cool or is_state('binary_sensor.yarbocadenceeq_in_direct_sun_window','off')) }}
@@ -2114,7 +2114,7 @@ script:
             yarbocadenceeq_cut_interval_hours: 48
             yarbocadenceeq_min_hours_between_cuts: 24
             yarbocadenceeq_moisture_max_percent: 52
-            yarbocadenceeq_hot_temp_threshold_f: 92
+            yarbocadenceeq_hot_temp_threshold_c: 33
             yarbocadenceeq_sun_buffer_morning_hours: 3.0
             yarbocadenceeq_sun_buffer_evening_hours: 2.0
             yarbocadenceeq_min_battery_percent: 95

@@ -46,8 +46,14 @@ views:
               - type: divider
               - entity: input_number.yarbocadenceeq_active_plan_slot
                 name: Running slot (system — 0=idle)
-              - entity: sensor.yarbocadenceeq_hours_since_last_cut
-                name: Hours since last cut (slot 1)
+              - entity: sensor.yarbocadenceeq_plan1_hours_since_last_cut
+                name: Hours since last cut · Slot 1
+              - entity: sensor.yarbocadenceeq_plan2_hours_since_last_cut
+                name: Hours since last cut · Slot 2
+              - entity: sensor.yarbocadenceeq_plan3_hours_since_last_cut
+                name: Hours since last cut · Slot 3
+              - entity: sensor.yarbocadenceeq_plan4_hours_since_last_cut
+                name: Hours since last cut · Slot 4
 
           # ---- TUNING (grouped sub-sections) ----------------------------------
           - type: entities
@@ -159,7 +165,7 @@ views:
 
               - type: section
                 label: Heat / Sun
-              - entity: input_number.yarbocadenceeq_hot_temp_threshold_f
+              - entity: input_number.yarbocadenceeq_hot_temp_threshold_c
                 name: Hot temp threshold
               - entity: input_number.yarbocadenceeq_sun_buffer_morning_hours
                 name: Sun buffer (morning)
@@ -279,73 +285,68 @@ views:
           - type: markdown
             content: >
               ### Plan schedule
-              {% set active = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) %}
-              {% set next_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) %}
-              {% if active > 0 %}
+              {%- set active = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) -%}
+              {%- set next_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) -%}
+              {%- if active > 0 %}
               **▶ Running: Slot {{ active }}**
-              {% elif next_slot > 0 %}
+              {%- elif next_slot > 0 %}
               **Next up: Slot {{ next_slot }} — {{ states('input_text.yarbocadenceeq_plan' ~ next_slot ~ '_yarbo_plan') | trim }}**
-              {% endif %}
+              {%- endif %}
 
-              {% set slug = states('sensor.yarbocadenceeq_device_slug_effective') %}
-              {% set opts = state_attr('select.' ~ slug ~ '_plan_select', 'options') or [] %}
-              {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
-              {% set emg = states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0) %}
-              {% set ns = namespace(any=false) %}
-              {% for n in [1,2,3,4] %}
-                {% set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
-                {% set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim %}
-                {% if en and pn not in ['','unknown','unavailable'] %}
-                  {% set ns.any = true %}
-                  {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
-                  {% set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') %}
-                  {% set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') %}
-                  {% set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') %}
-                  {% set lc_ts = as_timestamp(lc) if lc not in ['unknown','unavailable',''] else 0 %}
-                  {% set interval = states('input_number.yarbocadenceeq_plan' ~ n ~ '_interval_hours') | float(48) %}
-                  {% set gap = states('input_number.yarbocadenceeq_plan' ~ n ~ '_min_gap_hours') | float(24) %}
-                  {% set cut_h = states('input_number.yarbocadenceeq_plan' ~ n ~ '_cut_hours') | float(3.5) %}
-                  {% set buf = states('input_number.yarbocadenceeq_plan' ~ n ~ '_buffer_hours') | float(1.0) %}
-                  {% set since = ((as_timestamp(now()) - lc_ts) / 3600) | round(0) | int if lc_ts > 0 else 999 %}
-                  {% set es_parts = es.split(':') if es not in ['unknown','unavailable',''] else ['0','0'] %}
-                  {% set es_mins = (es_parts[0] | int(0)) * 60 + (es_parts[1] | int(0)) %}
-                  {% set now_mins = now().hour * 60 + now().minute %}
-                  {% set past_earliest = now_mins >= es_mins or es_mins == 0 %}
-                  {% set ls_parts = ls.split(':') if ls not in ['unknown','unavailable',''] else ['0','0'] %}
-                  {% set ls_mins = (ls_parts[0] | int(0)) * 60 + (ls_parts[1] | int(0)) %}
-                  {% set before_latest = now_mins <= ls_mins or ls_mins == 0 %}
-                  {% set trig = [cut_h + buf, emg] | max %}
-                  {% set due_normal = since >= interval and past_earliest and before_latest %}
-                  {% set due_rain = to_rain <= trig and to_rain >= cut_h and since >= gap and past_earliest and before_latest %}
-                  {% set plan_valid = opts | length > 0 and pn in opts %}
-                  {% set eligible = plan_valid and (due_normal or due_rain) %}
-                  {% set due = pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) %}
-                  {% set marker = '⏭ ' if (n == next_slot and active == 0) else '' %}
-                  {% set due_badge = ' 🔴 **DUE NOW**' if due else '' %}
-                  **{{ marker }}Slot {{ n }}** — {{ pn }}{{ due_badge }}
-                  Last: {{ as_timestamp(lc) | timestamp_custom('%a %b %-d, %-I:%M %p') if lc not in ['unknown','unavailable',''] else 'never' }} · From: {{ es[:5] if es not in ['unknown','unavailable'] else 'any' }} · Until: {{ ls[:5] if ls not in ['unknown','unavailable'] else 'any' }} · Next: {{ '**now**' if due else (as_timestamp(pred) | timestamp_custom('%a %-I:%M %p') if pred not in ['unknown','unavailable'] else '?') }}
-                  {% if not plan_valid %}
-                  ⚠️ Plan "{{ pn }}" not in Yarbo's list — check name
-                  {% elif not past_earliest %}
-                  ⏰ Before earliest start ({{ es[:5] }}) — {{ es_mins - now_mins }} min to go
-                  {% elif not before_latest %}
-                  🕐 Past latest start ({{ ls[:5] }}) — waiting for tomorrow
-                  {% elif not due_normal and not due_rain %}
-                  ⏳ {{ (interval - since) | round(0) | int }}h remaining of {{ interval | int }}h interval ({{ since }}h elapsed)
-                  {% elif eligible %}
-                  {% set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}
-                  {% if blocker == 'OK' %}
-                  ✅ Eligible — dispatching next scheduler run
-                  {% else %}
-                  🔑 Eligible — held by: {{ blocker }}
-                  {% endif %}
-                  {% endif %}
-
-                {% endif %}
-              {% endfor %}
-              {% if not ns.any %}
+              {%- set slug = states('sensor.yarbocadenceeq_device_slug_effective') -%}
+              {%- set opts = state_attr('select.' ~ slug ~ '_plan_select', 'options') or [] -%}
+              {%- set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) -%}
+              {%- set emg = states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0) -%}
+              {%- set ns = namespace(any=false) -%}
+              {%- for n in [1,2,3,4] -%}
+              {%- set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') -%}
+              {%- set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim -%}
+              {%- if en and pn not in ['','unknown','unavailable'] -%}
+              {%- set ns.any = true -%}
+              {%- set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') -%}
+              {%- set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') -%}
+              {%- set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') -%}
+              {%- set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') -%}
+              {%- set lc_ts = as_timestamp(lc) if lc not in ['unknown','unavailable',''] else 0 -%}
+              {%- set interval = states('input_number.yarbocadenceeq_plan' ~ n ~ '_interval_hours') | float(48) -%}
+              {%- set gap = states('input_number.yarbocadenceeq_plan' ~ n ~ '_min_gap_hours') | float(24) -%}
+              {%- set cut_h = states('input_number.yarbocadenceeq_plan' ~ n ~ '_cut_hours') | float(3.5) -%}
+              {%- set buf = states('input_number.yarbocadenceeq_plan' ~ n ~ '_buffer_hours') | float(1.0) -%}
+              {%- set since = ((as_timestamp(now()) - lc_ts) / 3600) | round(0) | int if lc_ts > 0 else 999 -%}
+              {%- set es_parts = es.split(':') if es not in ['unknown','unavailable',''] else ['0','0'] -%}
+              {%- set es_mins = (es_parts[0] | int(0)) * 60 + (es_parts[1] | int(0)) -%}
+              {%- set now_mins = now().hour * 60 + now().minute -%}
+              {%- set past_earliest = now_mins >= es_mins or es_mins == 0 -%}
+              {%- set ls_parts = ls.split(':') if ls not in ['unknown','unavailable',''] else ['0','0'] -%}
+              {%- set ls_mins = (ls_parts[0] | int(0)) * 60 + (ls_parts[1] | int(0)) -%}
+              {%- set before_latest = now_mins <= ls_mins or ls_mins == 0 -%}
+              {%- set trig = [cut_h + buf, emg] | max -%}
+              {%- set due_normal = since >= interval and past_earliest and before_latest -%}
+              {%- set due_rain = to_rain <= trig and to_rain >= cut_h and since >= gap and past_earliest and before_latest -%}
+              {%- set plan_valid = opts | length > 0 and pn in opts -%}
+              {%- set eligible = plan_valid and (due_normal or due_rain) -%}
+              {%- set due = pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) -%}
+              {%- set marker = '⏭ ' if (n == next_slot and active == 0) else '' -%}
+              {%- set due_badge = ' 🔴 **DUE NOW**' if due else '' %}
+              **{{ marker }}Slot {{ n }}** — {{ pn }}{{ due_badge }}
+              Last: {{ as_timestamp(lc) | timestamp_custom('%a %b %-d, %-I:%M %p') if lc not in ['unknown','unavailable',''] else 'never' }} ({{ since }}h ago) · Next: {{ '**now**' if due else (as_timestamp(pred) | timestamp_custom('%a %-I:%M %p') if pred not in ['unknown','unavailable'] else '?') }} · Window: {{ es[:5] if es not in ['unknown','unavailable'] else 'any' }}–{{ ls[:5] if ls not in ['unknown','unavailable'] else 'any' }}
+              {%- if not plan_valid %}
+              ⚠️ Plan "{{ pn }}" not in Yarbo's list — check name
+              {%- elif not past_earliest %}
+              ⏰ Before earliest start ({{ es[:5] }}) — {{ es_mins - now_mins }} min to go
+              {%- elif not before_latest %}
+              🕐 Past latest start ({{ ls[:5] }}) — waiting for tomorrow
+              {%- elif not due_normal and not due_rain %}
+              ⏳ {{ (interval - since) | round(0) | int }}h remaining of {{ interval | int }}h interval ({{ since }}h elapsed)
+              {%- elif eligible -%}
+              {%- set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}
+              {{ '✅ Eligible — dispatching next scheduler run' if blocker == 'OK' else '🔑 Eligible — held by: ' ~ blocker }}
+              {%- endif %}
+              {%- endif -%}
+              {%- endfor %}
+              {%- if not ns.any %}
               _No plans configured. Add Yarbo plan names to the slot settings below._
-              {% endif %}
+              {%- endif %}
 
           # ---- GO / NO-GO (multi-row status) ---------------------------------
           - type: markdown
@@ -644,60 +645,81 @@ views:
             name: Manual plan select
           - entity: input_number.yarbocadenceeq_active_plan_slot
             name: Running slot (0=idle)
+          - type: divider
+          - entity: sensor.yarbocadenceeq_plan1_hours_since_last_cut
+            name: Hours since cut · Slot 1
+          - entity: sensor.yarbocadenceeq_plan2_hours_since_last_cut
+            name: Hours since cut · Slot 2
+          - entity: sensor.yarbocadenceeq_plan3_hours_since_last_cut
+            name: Hours since cut · Slot 3
+          - entity: sensor.yarbocadenceeq_plan4_hours_since_last_cut
+            name: Hours since cut · Slot 4
 
       # 4b) Plan schedule summary -------------------------------------------
       - type: markdown
         content: >
           ### Plan schedule
-          {% set active = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) %}
-          {% set next_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) %}
-          {% if active > 0 %}**▶ Running: Slot {{ active }}**{% elif next_slot > 0 %}**Next up: Slot {{ next_slot }} — {{ states('input_text.yarbocadenceeq_plan' ~ next_slot ~ '_yarbo_plan') | trim }}**{% endif %}
+          {%- set active = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) -%}
+          {%- set next_slot = states('sensor.yarbocadenceeq_next_queued_slot') | int(0) -%}
+          {%- if active > 0 %}
+          **▶ Running: Slot {{ active }}**
+          {%- elif next_slot > 0 %}
+          **Next up: Slot {{ next_slot }} — {{ states('input_text.yarbocadenceeq_plan' ~ next_slot ~ '_yarbo_plan') | trim }}**
+          {%- endif %}
 
-          {% set slug = states('sensor.yarbocadenceeq_device_slug_effective') %}
-          {% set opts = state_attr('select.' ~ slug ~ '_plan_select', 'options') or [] %}
-          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
-          {% set emg = states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0) %}
-          {% set ns = namespace(any=false) %}
-          {% for n in [1,2,3,4] %}
-            {% set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
-            {% set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim %}
-            {% if en and pn not in ['','unknown','unavailable'] %}
-              {% set ns.any = true %}
-              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
-              {% set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') %}
-              {% set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') %}
-              {% set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') %}
-              {% set lc_ts = as_timestamp(lc) if lc not in ['unknown','unavailable',''] else 0 %}
-              {% set interval = states('input_number.yarbocadenceeq_plan' ~ n ~ '_interval_hours') | float(48) %}
-              {% set gap = states('input_number.yarbocadenceeq_plan' ~ n ~ '_min_gap_hours') | float(24) %}
-              {% set cut_h = states('input_number.yarbocadenceeq_plan' ~ n ~ '_cut_hours') | float(3.5) %}
-              {% set buf = states('input_number.yarbocadenceeq_plan' ~ n ~ '_buffer_hours') | float(1.0) %}
-              {% set since = ((as_timestamp(now()) - lc_ts) / 3600) | round(0) | int if lc_ts > 0 else 999 %}
-              {% set es_parts = es.split(':') if es not in ['unknown','unavailable',''] else ['0','0'] %}
-              {% set es_mins = (es_parts[0] | int(0)) * 60 + (es_parts[1] | int(0)) %}
-              {% set now_mins = now().hour * 60 + now().minute %}
-              {% set past_earliest = now_mins >= es_mins or es_mins == 0 %}
-              {% set ls_parts = ls.split(':') if ls not in ['unknown','unavailable',''] else ['0','0'] %}
-              {% set ls_mins = (ls_parts[0] | int(0)) * 60 + (ls_parts[1] | int(0)) %}
-              {% set before_latest = now_mins <= ls_mins or ls_mins == 0 %}
-              {% set trig = [cut_h + buf, emg] | max %}
-              {% set due_normal = since >= interval and past_earliest and before_latest %}
-              {% set due_rain = to_rain <= trig and to_rain >= cut_h and since >= gap and past_earliest and before_latest %}
-              {% set plan_valid = opts | length > 0 and pn in opts %}
-              {% set eligible = plan_valid and (due_normal or due_rain) %}
-              {% set due = pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) %}
-              {% set marker = '⏭ ' if (n == next_slot and active == 0) else '' %}
-              {% set due_badge = ' 🔴' if due else '' %}
-              **{{ marker }}S{{ n }}**{{ due_badge }} {{ pn }} · next {{ '**now**' if due else (as_timestamp(pred) | timestamp_custom('%a %-I:%M %p') if pred not in ['unknown','unavailable'] else '?') }}
-              {% if not plan_valid %}⚠️ plan not in Yarbo list
-              {% elif not past_earliest %}⏰ after {{ es[:5] }}
-              {% elif not before_latest %}🕐 past {{ ls[:5] }}
-              {% elif not due_normal and not due_rain %}⏳ {{ (interval - since) | round(0) | int }}h left
-              {% elif eligible %}{% set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}{{ '✅ ready' if blocker == 'OK' else '🔑 held: ' ~ blocker }}
-              {% endif %}
-            {% endif %}
-          {% endfor %}
-          {% if not ns.any %}_No plans configured._{% endif %}
+          {%- set slug = states('sensor.yarbocadenceeq_device_slug_effective') -%}
+          {%- set opts = state_attr('select.' ~ slug ~ '_plan_select', 'options') or [] -%}
+          {%- set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) -%}
+          {%- set emg = states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0) -%}
+          {%- set ns = namespace(any=false) -%}
+          {%- for n in [1,2,3,4] -%}
+          {%- set en = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') -%}
+          {%- set pn = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim -%}
+          {%- if en and pn not in ['','unknown','unavailable'] -%}
+          {%- set ns.any = true -%}
+          {%- set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') -%}
+          {%- set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') -%}
+          {%- set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') -%}
+          {%- set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') -%}
+          {%- set lc_ts = as_timestamp(lc) if lc not in ['unknown','unavailable',''] else 0 -%}
+          {%- set interval = states('input_number.yarbocadenceeq_plan' ~ n ~ '_interval_hours') | float(48) -%}
+          {%- set gap = states('input_number.yarbocadenceeq_plan' ~ n ~ '_min_gap_hours') | float(24) -%}
+          {%- set cut_h = states('input_number.yarbocadenceeq_plan' ~ n ~ '_cut_hours') | float(3.5) -%}
+          {%- set buf = states('input_number.yarbocadenceeq_plan' ~ n ~ '_buffer_hours') | float(1.0) -%}
+          {%- set since = ((as_timestamp(now()) - lc_ts) / 3600) | round(0) | int if lc_ts > 0 else 999 -%}
+          {%- set es_parts = es.split(':') if es not in ['unknown','unavailable',''] else ['0','0'] -%}
+          {%- set es_mins = (es_parts[0] | int(0)) * 60 + (es_parts[1] | int(0)) -%}
+          {%- set now_mins = now().hour * 60 + now().minute -%}
+          {%- set past_earliest = now_mins >= es_mins or es_mins == 0 -%}
+          {%- set ls_parts = ls.split(':') if ls not in ['unknown','unavailable',''] else ['0','0'] -%}
+          {%- set ls_mins = (ls_parts[0] | int(0)) * 60 + (ls_parts[1] | int(0)) -%}
+          {%- set before_latest = now_mins <= ls_mins or ls_mins == 0 -%}
+          {%- set trig = [cut_h + buf, emg] | max -%}
+          {%- set due_normal = since >= interval and past_earliest and before_latest -%}
+          {%- set due_rain = to_rain <= trig and to_rain >= cut_h and since >= gap and past_earliest and before_latest -%}
+          {%- set plan_valid = opts | length > 0 and pn in opts -%}
+          {%- set eligible = plan_valid and (due_normal or due_rain) -%}
+          {%- set due = pred not in ['unknown','unavailable'] and as_timestamp(pred) <= as_timestamp(now()) -%}
+          {%- set marker = '⏭ ' if (n == next_slot and active == 0) else '' -%}
+          {%- set due_badge = ' 🔴' if due else '' %}
+          **{{ marker }}S{{ n }}**{{ due_badge }} {{ pn }} · {{ since }}h ago · next {{ '**now**' if due else (as_timestamp(pred) | timestamp_custom('%a %-I:%M %p') if pred not in ['unknown','unavailable'] else '?') }} · {{ es[:5] if es not in ['unknown','unavailable'] else 'any' }}–{{ ls[:5] if ls not in ['unknown','unavailable'] else 'any' }}
+          {%- if not plan_valid %}
+          ⚠️ plan not in Yarbo list
+          {%- elif not past_earliest %}
+          ⏰ after {{ es[:5] }}
+          {%- elif not before_latest %}
+          🕐 past {{ ls[:5] }}
+          {%- elif not due_normal and not due_rain %}
+          ⏳ {{ (interval - since) | round(0) | int }}h left of {{ interval | int }}h
+          {%- elif eligible -%}
+          {%- set blocker = states('sensor.yarbocadenceeq_cut_blocker') %}
+          {{ '✅ ready' if blocker == 'OK' else '🔑 held: ' ~ blocker }}
+          {%- endif %}
+          {%- endif -%}
+          {%- endfor %}
+          {%- if not ns.any %}
+          _No plans configured._
+          {%- endif %}
 
       # 5) Commands ----------------------------------------------------------
       - type: entities
@@ -845,7 +867,7 @@ views:
             name: Weather entity status
           - entity: input_number.yarbocadenceeq_active_cut_hours
             name: Active plan avg run time
-          - entity: input_number.yarbocadenceeq_hot_temp_threshold_f
+          - entity: input_number.yarbocadenceeq_hot_temp_threshold_c
             name: Hot temp threshold
           - entity: input_number.yarbocadenceeq_sun_buffer_morning_hours
             name: Sun buffer (morning)
