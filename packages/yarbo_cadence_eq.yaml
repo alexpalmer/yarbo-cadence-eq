@@ -51,7 +51,9 @@ input_text:
   # Example: sensor.gw3000b_wifi08ab_soil_ch1, sensor.gw3000b_wifi08ab_soil_ch2
   yarbocadenceeq_moisture_sensors:
     name: "YarboCadenceEQ: Moisture sensor entity IDs"
-    initial: "sensor.gw3000b_wifi08ab_soil_ch1, sensor.gw3000b_wifi08ab_soil_ch2, sensor.gw3000b_wifi08ab_soil_ch3"
+    # No initial: here on purpose — initial: FORCES the value on every restart,
+    # which would wipe your edits. Without it, HA restores your last-set list.
+    # New installs come up blank (use the example in the comment above).
     max: 255
 
   # ---- Multi-plan slot helpers ------------------------------------------------
@@ -107,12 +109,13 @@ input_number:
     icon: mdi:weather-pouring
   yarbocadenceeq_rain_prob_threshold:
     name: "YarboCadenceEQ: Forecast rain probability trigger (%)"
-    min: 30
+    min: 0
     max: 100
-    step: 5
+    step: 1
     # suggested starting value: 60
     unit_of_measurement: "%"
     icon: mdi:weather-partly-rainy
+    mode: slider
   yarbocadenceeq_rain_amount_threshold:
     name: "YarboCadenceEQ: Forecast rain amount trigger"
     min: 0.0
@@ -389,15 +392,17 @@ input_boolean:
   yarbocadenceeq_show_homekit_help:
     name: "Show HomeKit setup help"
     icon: mdi:help-circle-outline
-  # Master enable for the soil-moisture gate. Defaults OFF so installs without
-  # soil sensors can mow immediately. ON = the listed sensors gate the cut
+  # Master enable for the soil-moisture gate. ON = the listed sensors gate the cut
   # (wet ground blocks; if all listed sensors are unavailable the cut is BLOCKED and
   # you get a notification, because moisture is a primary safety gate). OFF = moisture
   # never gates (for users with no soil sensors).
+  # No initial: here on purpose — initial: FORCES the value on every restart (which
+  # was flipping this back OFF). Without it, HA restores your last setting; a fresh
+  # install comes up OFF (HA's default for a new input_boolean), preserving the
+  # "safe for sensorless installs" intent without stomping your choice every reboot.
   yarbocadenceeq_use_moisture:
     name: "YarboCadenceEQ: Use moisture sensors"
     icon: mdi:water-percent
-    initial: false
   yarbocadenceeq_show_moisture_help:
     name: "Show moisture setup help"
     icon: mdi:help-circle-outline
@@ -524,7 +529,13 @@ sensor:
   - platform: statistics
     name: "YarboCadenceEQ: Onboard Rain Mean"
     unique_id: yarbocadenceeq_onboard_rain_mean
-    entity_id: sensor.yarbocadenceeq_rain_sensor
+    # Source the RAW integration sensor, not the yarbocadenceeq_ template mirror.
+    # The statistics platform needs a stable, always-numeric source bound at setup;
+    # a template mirror can emit 'unknown'/'unavailable' during slug resolution (and
+    # was a victim of the entity_id ghosting), which makes the mean go Unknown.
+    # NOTE: statistics entity_id must be a literal (no templates) — if your robot
+    # slug isn't "yarbo", change sensor.yarbo_rain_sensor to sensor.<slug>_rain_sensor.
+    entity_id: sensor.yarbo_rain_sensor
     state_characteristic: mean
     max_age:
       seconds: 30
@@ -540,7 +551,6 @@ template:
   - sensor:
       - name: "YarboCadenceEQ: Device Slug Effective"
         unique_id: yarbocadenceeq_device_slug_effective
-        default_entity_id: sensor.yarbocadenceeq_device_slug_effective
         icon: mdi:identifier
         state: >
           {% set manual = states('input_text.yarbocadenceeq_device_slug') | trim %}
@@ -563,7 +573,6 @@ template:
           {% endif %}
       - name: "YarboCadenceEQ: Device Slug Status"
         unique_id: yarbocadenceeq_device_slug_status
-        default_entity_id: sensor.yarbocadenceeq_device_slug_status
         icon: mdi:robot-mower
         state: >
           {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
@@ -582,7 +591,6 @@ template:
 
       - name: "YarboCadenceEQ: Weather Entity Effective"
         unique_id: yarbocadenceeq_weather_entity_effective
-        default_entity_id: sensor.yarbocadenceeq_weather_entity_effective
         icon: mdi:weather-partly-cloudy
         state: >
           {% set manual = states('input_text.yarbocadenceeq_weather_entity') | trim %}
@@ -603,7 +611,6 @@ template:
 
       - name: "YarboCadenceEQ: Weather Entity Status"
         unique_id: yarbocadenceeq_weather_entity_status
-        default_entity_id: sensor.yarbocadenceeq_weather_entity_status
         icon: mdi:weather-cloudy-alert
         state: >
           {% set ent = states('sensor.yarbocadenceeq_weather_entity_effective') %}
@@ -616,7 +623,6 @@ template:
 
       - name: "YarboCadenceEQ: Battery"
         unique_id: yarbocadenceeq_battery
-        default_entity_id: sensor.yarbocadenceeq_battery
         unit_of_measurement: "%"
         icon: mdi:battery
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_battery') }}"
@@ -624,7 +630,6 @@ template:
 
       - name: "YarboCadenceEQ: Charging Power"
         unique_id: yarbocadenceeq_charging_power
-        default_entity_id: sensor.yarbocadenceeq_charging_power
         unit_of_measurement: W
         icon: mdi:flash
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging_power') }}"
@@ -632,63 +637,54 @@ template:
 
       - name: "YarboCadenceEQ: RTK Signal"
         unique_id: yarbocadenceeq_rtk_signal
-        default_entity_id: sensor.yarbocadenceeq_rtk_signal
         icon: mdi:crosshairs-gps
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rtk_signal') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rtk_signal') }}"
 
       - name: "YarboCadenceEQ: Network"
         unique_id: yarbocadenceeq_network
-        default_entity_id: sensor.yarbocadenceeq_network
         icon: mdi:access-point-network
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_network') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_network') }}"
 
       - name: "YarboCadenceEQ: Head Type"
         unique_id: yarbocadenceeq_head_type
-        default_entity_id: sensor.yarbocadenceeq_head_type
         icon: mdi:robot-mower
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_head_type') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_head_type') }}"
 
       - name: "YarboCadenceEQ: Auto Plan Status"
         unique_id: yarbocadenceeq_auto_plan_status
-        default_entity_id: sensor.yarbocadenceeq_auto_plan_status
         icon: mdi:clipboard-list
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_status') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_status') }}"
 
       - name: "YarboCadenceEQ: Auto Plan Pause Status"
         unique_id: yarbocadenceeq_auto_plan_pause_status
-        default_entity_id: sensor.yarbocadenceeq_auto_plan_pause_status
         icon: mdi:pause-circle
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_pause_status') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_auto_plan_pause_status') }}"
 
       - name: "YarboCadenceEQ: Recharging Status"
         unique_id: yarbocadenceeq_recharging_status
-        default_entity_id: sensor.yarbocadenceeq_recharging_status
         icon: mdi:battery-charging
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_recharging_status') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_recharging_status') }}"
 
       - name: "YarboCadenceEQ: Activity"
         unique_id: yarbocadenceeq_activity
-        default_entity_id: sensor.yarbocadenceeq_activity
         icon: mdi:power-sleep
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_activity') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_activity') }}"
 
       - name: "YarboCadenceEQ: GPS Satellites"
         unique_id: yarbocadenceeq_gps_satellites
-        default_entity_id: sensor.yarbocadenceeq_gps_satellites
         icon: mdi:satellite-variant
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_gps_satellites') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_gps_satellites') }}"
 
       - name: "YarboCadenceEQ: Rain Sensor"
         unique_id: yarbocadenceeq_rain_sensor
-        default_entity_id: sensor.yarbocadenceeq_rain_sensor
         icon: mdi:weather-rainy
         state: "{{ states('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_sensor') }}"
         availability: "{{ has_value('sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_sensor') }}"
@@ -696,21 +692,18 @@ template:
     binary_sensor:
       - name: "YarboCadenceEQ: Online"
         unique_id: yarbocadenceeq_online
-        default_entity_id: binary_sensor.yarbocadenceeq_online
         device_class: connectivity
         state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_online','on') }}"
         availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_online') }}"
 
       - name: "YarboCadenceEQ: Charging"
         unique_id: yarbocadenceeq_charging
-        default_entity_id: binary_sensor.yarbocadenceeq_charging
         device_class: battery_charging
         state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging','on') }}"
         availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_charging') }}"
 
       - name: "YarboCadenceEQ: Raw Rain Detected"
         unique_id: yarbocadenceeq_raw_rain_detected
-        default_entity_id: binary_sensor.yarbocadenceeq_raw_rain_detected
         device_class: moisture
         state: "{{ is_state('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_detected','on') }}"
         availability: "{{ has_value('binary_sensor.' ~ states('sensor.yarbocadenceeq_device_slug_effective') ~ '_rain_detected') }}"
@@ -718,7 +711,6 @@ template:
     select:
       - name: "YarboCadenceEQ: Plan Select"
         unique_id: yarbocadenceeq_plan_select
-        default_entity_id: select.yarbocadenceeq_plan_select
         icon: mdi:clipboard-list
         state: >
           {% set s = states('sensor.yarbocadenceeq_device_slug_effective') %}
@@ -864,20 +856,27 @@ template:
             true
           {% endif %}
 
-      # Robot hardware/state readiness rollup, shown in Decision metrics. Mirrors
-      # exactly the rows displayed under it (online, on dock, battery >= min, RTK,
-      # onboard rain) so the checkbox can never be off without a visible reason.
+      # Robot health rollup, shown in Decision metrics. ON in either of the two
+      # states where the robot is fine: actively mowing (it's out doing its job),
+      # OR dispatch-ready on the dock (online, docked, battery >= min, RTK good, no
+      # onboard rain — the rows displayed under it). OFF only when neither holds,
+      # i.e. something's actually wrong. NOTE: because "mowing" counts as nominal,
+      # this can read On while the "Home (on dock)" row below it shows Off — that's
+      # expected during a cut, not a contradiction.
       - name: "YarboCadenceEQ: Yarbo Nominal"
         unique_id: yarbocadenceeq_yarbo_nominal
         state: >
           {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
-          {{ is_state('binary_sensor.yarbocadenceeq_online','on')
+          {% set mowing = states('sensor.yarbocadenceeq_auto_plan_status')
+                          in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set ready_on_dock = is_state('binary_sensor.yarbocadenceeq_online','on')
              and is_state('input_boolean.yarbocadenceeq_docked','on')
              and states('sensor.yarbocadenceeq_battery') | float(0)
                  >= states('input_number.yarbocadenceeq_min_battery_percent') | float(100)
              and (sig == 'Strong'
                   or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on')))
-             and is_state('binary_sensor.yarbocadenceeq_onboard_rain_detected','off') }}
+             and is_state('binary_sensor.yarbocadenceeq_onboard_rain_detected','off') %}
+          {{ mowing or ready_on_dock }}
 
       - name: "YarboCadenceEQ: Should Heat Pause"
         unique_id: yarbocadenceeq_should_heat_pause
@@ -1238,6 +1237,36 @@ template:
               {% endif %}
             {% endfor %}
             {% if ns.hi > -990 %}{{ ns.hi | round(0) | int }}{% else %}0{% endif %}
+          {% endif %}
+
+      # Current (next-hour) forecast rain probability, straight off the hourly
+      # cache slot the gate evaluates first. Surfaced so you can see WHY the
+      # pre-rain logic is / isn't firing relative to the probability trigger.
+      # Reads the hardened forecast cache (which now holds last-good through OWM
+      # hiccups), so it no longer blanks when a single fetch comes back empty.
+      - name: "YarboCadenceEQ: Current Rain Probability"
+        unique_id: yarbocadenceeq_current_rain_probability
+        unit_of_measurement: "%"
+        state: >
+          {% set h = state_attr('sensor.yarbocadenceeq_weather_forecast_cache','hourly') or [] %}
+          {% if h | length > 0 and h[0].precipitation_probability is not none %}
+            {{ h[0].precipitation_probability | float(0) | round(0) | int }}
+          {% else %}
+            unknown
+          {% endif %}
+
+      # Friendly text version: the next-hour probability vs. your trigger, with a
+      # plain message when the forecast hasn't populated yet.
+      - name: "YarboCadenceEQ: Current Rain Probability Display"
+        unique_id: yarbocadenceeq_current_rain_probability_display
+        icon: mdi:weather-pouring
+        state: >
+          {% set p = states('sensor.yarbocadenceeq_current_rain_probability') %}
+          {% set trig = states('input_number.yarbocadenceeq_rain_prob_threshold') | float(60) %}
+          {% if p in ['unknown','unavailable','none'] %}
+            no forecast yet
+          {% else %}
+            {{ p | int }}%
           {% endif %}
 
       # Hours until the next rain. PRECISE hourly window first (0-48h, 1h steps),
@@ -1699,43 +1728,91 @@ template:
         minutes: "/15"
       - platform: homeassistant
         event: start
+      # Fires when "Refresh all Yarbo data" runs (the refresh_all script emits this
+      # event) — which the refresh-on-startup automation also calls, so weather
+      # refreshes on demand AND fills in the first time once the integration is up.
+      - platform: event
+        event_type: yarbocadenceeq_refresh_weather
     action:
+      # Dynamic source from the override box (input_text.yarbocadenceeq_weather_entity
+      # -> effective sensor) so OTHER weather providers work.
       - variables:
-          weather_entity: "{{ states('sensor.yarbocadenceeq_weather_entity_effective') }}"
+          wx: "{{ states('sensor.yarbocadenceeq_weather_entity_effective') }}"
+      # continue_on_error on EACH fetch is the critical fix: a trigger sensor renders
+      # its attributes only after the action COMPLETES, so if the provider errors on
+      # one forecast type (many OWM setups don't serve 'daily' via get_forecasts),
+      # that error must not abort the action — or the type that DID work (hourly) is
+      # discarded too and the whole sensor stays 'unknown'.
+      - service: weather.get_forecasts
+        continue_on_error: true
+        data:
+          type: hourly
+        target:
+          entity_id: "{{ wx }}"
+        response_variable: fc
+      - service: weather.get_forecasts
+        continue_on_error: true
+        data:
+          type: daily
+        target:
+          entity_id: "{{ wx }}"
+        response_variable: fcd
+      # ===================================================================
+      # LAST-GOOD GUARD (root-cause fix for "forecast dies after a few min").
+      # OpenWeatherMap's get_forecasts intermittently returns a SUCCESSFUL but
+      # EMPTY result (no forecast for our entity, or a momentary 'unavailable'
+      # weather entity). The old code rendered that straight into the attributes
+      # as [] — wiping the good forecast until a later tick happened to succeed.
+      # Trigger-based template entities ONLY re-render on their own triggers AND
+      # have their state+attributes RESTORED across restarts/between triggers, so
+      # the fix is simply: if THIS run produced no usable hourly OR daily data,
+      # ABORT before the sensor renders. The previously-stored (restored) hourly
+      # and daily attributes then remain untouched — i.e. we keep last-good.
+      # A partial success (e.g. hourly ok, daily empty — the common OWM case)
+      # passes the guard and updates normally.
+      # ===================================================================
       - variables:
-          weather_ready: >
-            {{ weather_entity not in ['unknown','unavailable','none','None','']
-               and states(weather_entity) not in ['unknown','unavailable'] }}
-      - choose:
-          - conditions:
-              - "{{ weather_ready }}"
-            sequence:
-              - service: weather.get_forecasts
-                data:
-                  type: hourly
-                target:
-                  entity_id: "{{ weather_entity }}"
-                response_variable: fc
-              - service: weather.get_forecasts
-                data:
-                  type: daily
-                target:
-                  entity_id: "{{ weather_entity }}"
-                response_variable: fcd
+          h_count: "{{ (fc[wx].forecast | count) if (fc is mapping and wx in fc) else 0 }}"
+          d_count: "{{ (fcd[wx].forecast | count) if (fcd is mapping and wx in fcd) else 0 }}"
+      - condition: template
+        value_template: "{{ (h_count | int) > 0 or (d_count | int) > 0 }}"
     sensor:
       - name: "YarboCadenceEQ: Weather Forecast Cache"
         unique_id: yarbocadenceeq_weather_forecast_cache
-        state: "{{ 'ok' if weather_ready | default(false) else 'unavailable' }}"
+        # We only reach this render when the guard above passed, i.e. fc/fcd hold
+        # usable data for THIS run. (On an empty fetch the action aborts and these
+        # templates are NOT re-rendered, so the restored last-good values persist.)
+        # State shows live counts ("ok 48h/8d") for at-a-glance debug.
+        state: >
+          {% set e = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+          {% set rh = fc | default({}, true) %}
+          {% set rd = fcd | default({}, true) %}
+          {% set h = (rh[e].forecast | count) if (rh is mapping and e in rh) else 0 %}
+          {% set d = (rd[e].forecast | count) if (rd is mapping and e in rd) else 0 %}
+          {{ ('ok ' ~ h ~ 'h/' ~ d ~ 'd') if (h > 0 or d > 0) else 'no data' }}
         attributes:
-          weather_entity: "{{ weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) }}"
+          weather_entity: "{{ states('sensor.yarbocadenceeq_weather_entity_effective') }}"
+          # Each type independently falls back to ITS last-good restored value when
+          # this run's fetch lacked that type, so a daily-only failure can't wipe a
+          # good hourly (and vice-versa). state_attr() reads the stored attribute
+          # (NOT a same-render self-reference), so this initialises cleanly on first
+          # load — no pre-seed required.
           hourly: >
-            {% set ent = weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) %}
-            {% set res = fc | default({}) %}
-            {% if ent in res %}{{ res[ent].forecast }}{% else %}{{ [] }}{% endif %}
+            {% set e = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+            {% set res = fc | default({}, true) %}
+            {% if res is mapping and e in res and (res[e].forecast | count) > 0 %}
+              {{ res[e].forecast }}
+            {% else %}
+              {{ state_attr('sensor.yarbocadenceeq_weather_forecast_cache','hourly') or [] }}
+            {% endif %}
           daily: >
-            {% set ent = weather_entity | default(states('sensor.yarbocadenceeq_weather_entity_effective')) %}
-            {% set res = fcd | default({}) %}
-            {% if ent in res %}{{ res[ent].forecast }}{% else %}{{ [] }}{% endif %}
+            {% set e = states('sensor.yarbocadenceeq_weather_entity_effective') %}
+            {% set res = fcd | default({}, true) %}
+            {% if res is mapping and e in res and (res[e].forecast | count) > 0 %}
+              {{ res[e].forecast }}
+            {% else %}
+              {{ state_attr('sensor.yarbocadenceeq_weather_forecast_cache','daily') or [] }}
+            {% endif %}
 
 
 # #############################################################################
@@ -1773,6 +1850,9 @@ script:
       slug: "{{ states('sensor.yarbocadenceeq_device_slug_effective') }}"
       do_wake: "{{ wake | default(true) }}"
     sequence:
+      # Kick the weather forecast cache too, so "Refresh all Yarbo data" (and the
+      # refresh-on-startup automation that calls this) pulls a fresh forecast.
+      - event: yarbocadenceeq_refresh_weather
       - if: "{{ do_wake }}"
         then:
           - service: select.select_option
@@ -2358,9 +2438,18 @@ automation:
   # on a definitive departure. This is what fixes the overnight "not on dock"
   # false-negative — charging going silent is NOT treated as leaving.
   #
-  # SET ON: recharging reaches Charging/Verifying (only happens on the dock).
+  # SET ON either signal (OR'd):
+  #   (a) recharging reaches Charging/Verifying — happens only on the dock, and
+  #       works even when RTK is poor; but at a full battery it's true only during
+  #       the brief battery-care top-ups (~98%->100%), silent the rest of the time.
+  #   (b) GPS says we're on the dock pad — RTK Strong AND within 0.5 m of the saved
+  #       dock point, and NOT mid-plan. The always-on signal that fixes the
+  #       "sitting at 100%, recharging idle, but clearly home" false-negative.
+  # Either one latches "docked"; the /5 self-heal re-asserts while still home.
+  # (dock_distance_m goes 'unavailable' when the robot is asleep/not reporting GPS;
+  # that simply drops the GPS path and falls back to the charging path + self-heal.)
   - id: yarbocadenceeq_dock_latch_set
-    alias: "YarboCadenceEQ: Dock latch — set on charge"
+    alias: "YarboCadenceEQ: Dock latch — set on charge or GPS"
     trigger:
       - platform: state
         entity_id: sensor.yarbocadenceeq_recharging_status
@@ -2368,19 +2457,30 @@ automation:
       - platform: state
         entity_id: sensor.yarbocadenceeq_recharging_status
         to: "Verifying"
+      # RTK locking to Strong while parked is the moment GPS becomes trustworthy.
+      - platform: state
+        entity_id: sensor.yarbocadenceeq_rtk_signal
+        to: "Strong"
       - platform: homeassistant
         event: start
-      # Self-heal: while recharging holds Charging/Verifying there's no new edge,
-      # so re-assert the latch on a timer in case it ever got cleared while still
-      # on the dock. turn_on is idempotent.
+      # Self-heal: re-assert every 5 min while either signal still says home
+      # (turn_on is idempotent). This alone recovers a latch stuck off at 100%.
       - platform: time_pattern
         minutes: "/5"
     condition:
-      - condition: state
-        entity_id: sensor.yarbocadenceeq_recharging_status
-        state:
-          - "Charging"
-          - "Verifying"
+      - condition: template
+        value_template: >
+          {% set rech = states('sensor.yarbocadenceeq_recharging_status') %}
+          {% set on_charger = rech in ['Charging','Verifying'] %}
+          {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
+          {% set dd = states('sensor.yarbocadenceeq_dock_distance_m') %}
+          {% set ap = states('sensor.yarbocadenceeq_auto_plan_status') %}
+          {% set ap_active = ap in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set at_dock = sig == 'Strong'
+                           and dd not in ['unknown','unavailable','none']
+                           and (dd | float(9999)) <= 0.5
+                           and not ap_active %}
+          {{ on_charger or at_dock }}
     action:
       - service: input_boolean.turn_on
         target:
