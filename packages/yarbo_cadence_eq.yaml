@@ -54,6 +54,24 @@ input_text:
     initial: "sensor.gw3000b_wifi08ab_soil_ch1, sensor.gw3000b_wifi08ab_soil_ch2, sensor.gw3000b_wifi08ab_soil_ch3"
     max: 255
 
+  # ---- Multi-plan slot helpers ------------------------------------------------
+  # Each slot stores the Yarbo plan name to run. Enter the exact plan name as it
+  # appears in the Yarbo plan select dropdown (case-sensitive). Leave blank or
+  # keep the slot disabled to skip it. Slot 1 is auto-populated from your v1
+  # plan setting on first upgrade.
+  yarbocadenceeq_plan1_yarbo_plan:
+    name: "YarboCadenceEQ: Plan slot 1 — Yarbo plan name"
+    max: 120
+  yarbocadenceeq_plan2_yarbo_plan:
+    name: "YarboCadenceEQ: Plan slot 2 — Yarbo plan name"
+    max: 120
+  yarbocadenceeq_plan3_yarbo_plan:
+    name: "YarboCadenceEQ: Plan slot 3 — Yarbo plan name"
+    max: 120
+  yarbocadenceeq_plan4_yarbo_plan:
+    name: "YarboCadenceEQ: Plan slot 4 — Yarbo plan name"
+    max: 120
+
 input_select:
   yarbocadenceeq_heat_resume_mode:
     name: "YarboCadenceEQ: Heat resume mode"
@@ -218,6 +236,137 @@ input_number:
     mode: box
     icon: mdi:longitude
 
+  # ---- Active plan slot tracker (system) ------------------------------------
+  # 0 = no plan currently running; 1-4 = which slot was dispatched by the
+  # scheduler. Set by evaluate_and_dispatch before starting a plan; cleared
+  # to 0 when completion is stamped or the job is cancelled. Do not set manually.
+  yarbocadenceeq_active_plan_slot:
+    name: "YarboCadenceEQ: Active plan slot (system)"
+    min: 0
+    max: 4
+    step: 1
+    mode: box
+    icon: mdi:counter
+
+  # ---- Per-slot cadence parameters ------------------------------------------
+  # Slot 1 defaults are seeded by the reset script (same as v1 global defaults).
+  # Slots 2-4 start with defaults but are disabled; configure and enable as needed.
+  yarbocadenceeq_plan1_interval_hours:
+    name: "YarboCadenceEQ: Plan slot 1 — target interval (h)"
+    min: 1
+    max: 240
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-sand
+  yarbocadenceeq_plan1_min_gap_hours:
+    name: "YarboCadenceEQ: Plan slot 1 — min gap between cuts (h)"
+    min: 1
+    max: 72
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-lock
+  yarbocadenceeq_plan1_cut_hours:
+    name: "YarboCadenceEQ: Plan slot 1 — avg run time (h)"
+    min: 0.5
+    max: 12
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer
+  yarbocadenceeq_plan1_buffer_hours:
+    name: "YarboCadenceEQ: Plan slot 1 — cut buffer (h)"
+    min: 0.0
+    max: 4.0
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer-plus
+
+  yarbocadenceeq_plan2_interval_hours:
+    name: "YarboCadenceEQ: Plan slot 2 — target interval (h)"
+    min: 1
+    max: 240
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-sand
+  yarbocadenceeq_plan2_min_gap_hours:
+    name: "YarboCadenceEQ: Plan slot 2 — min gap between cuts (h)"
+    min: 1
+    max: 72
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-lock
+  yarbocadenceeq_plan2_cut_hours:
+    name: "YarboCadenceEQ: Plan slot 2 — avg run time (h)"
+    min: 0.5
+    max: 12
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer
+  yarbocadenceeq_plan2_buffer_hours:
+    name: "YarboCadenceEQ: Plan slot 2 — cut buffer (h)"
+    min: 0.0
+    max: 4.0
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer-plus
+
+  yarbocadenceeq_plan3_interval_hours:
+    name: "YarboCadenceEQ: Plan slot 3 — target interval (h)"
+    min: 1
+    max: 240
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-sand
+  yarbocadenceeq_plan3_min_gap_hours:
+    name: "YarboCadenceEQ: Plan slot 3 — min gap between cuts (h)"
+    min: 1
+    max: 72
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-lock
+  yarbocadenceeq_plan3_cut_hours:
+    name: "YarboCadenceEQ: Plan slot 3 — avg run time (h)"
+    min: 0.5
+    max: 12
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer
+  yarbocadenceeq_plan3_buffer_hours:
+    name: "YarboCadenceEQ: Plan slot 3 — cut buffer (h)"
+    min: 0.0
+    max: 4.0
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer-plus
+
+  yarbocadenceeq_plan4_interval_hours:
+    name: "YarboCadenceEQ: Plan slot 4 — target interval (h)"
+    min: 1
+    max: 240
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-sand
+  yarbocadenceeq_plan4_min_gap_hours:
+    name: "YarboCadenceEQ: Plan slot 4 — min gap between cuts (h)"
+    min: 1
+    max: 72
+    step: 1
+    unit_of_measurement: h
+    icon: mdi:timer-lock
+  yarbocadenceeq_plan4_cut_hours:
+    name: "YarboCadenceEQ: Plan slot 4 — avg run time (h)"
+    min: 0.5
+    max: 12
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer
+  yarbocadenceeq_plan4_buffer_hours:
+    name: "YarboCadenceEQ: Plan slot 4 — cut buffer (h)"
+    min: 0.0
+    max: 4.0
+    step: 0.25
+    unit_of_measurement: h
+    icon: mdi:timer-plus
+
 input_boolean:
   # THE master virtual switch — expose THIS one to HomeKit. Survives reboots.
   #   ON  = automation may mow
@@ -279,6 +428,29 @@ input_boolean:
     name: "YarboCadenceEQ: Docked (latch, system)"
     icon: mdi:home-circle
 
+  # ---- Per-slot enable/disable -----------------------------------------------
+  # Slot 1 is enabled by the v1→v2 migration (or first-boot seed). Slots 2-4
+  # start disabled. Enable a slot only after configuring its plan name and cadence.
+  yarbocadenceeq_plan1_enabled:
+    name: "YarboCadenceEQ: Plan slot 1 enabled"
+    icon: mdi:calendar-check
+  yarbocadenceeq_plan2_enabled:
+    name: "YarboCadenceEQ: Plan slot 2 enabled"
+    icon: mdi:calendar-check
+  yarbocadenceeq_plan3_enabled:
+    name: "YarboCadenceEQ: Plan slot 3 enabled"
+    icon: mdi:calendar-check
+  yarbocadenceeq_plan4_enabled:
+    name: "YarboCadenceEQ: Plan slot 4 enabled"
+    icon: mdi:calendar-check
+
+  # ---- One-time v2 migration flag (system) ------------------------------------
+  # Set ON after the v1→v2 migration automation runs (copies v1 global settings to
+  # slot 1). Prevents the migration from running again on subsequent restarts.
+  yarbocadenceeq_v2_migrated:
+    name: "YarboCadenceEQ: v2 migration done (system)"
+    icon: mdi:check-decagram
+
 input_datetime:
   yarbocadenceeq_last_cut_completed:
     name: "Last cut completed"
@@ -287,6 +459,56 @@ input_datetime:
   yarbocadenceeq_current_job_started:
     name: "Current job started"
     has_date: true
+    has_time: true
+
+  # ---- Per-slot last-cut timestamps and earliest-start times -----------------
+  yarbocadenceeq_plan1_last_cut:
+    name: "YarboCadenceEQ: Plan slot 1 — last cut completed"
+    has_date: true
+    has_time: true
+  yarbocadenceeq_plan1_earliest_start:
+    name: "YarboCadenceEQ: Plan slot 1 — earliest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan1_latest_start:
+    name: "YarboCadenceEQ: Plan slot 1 — latest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan2_last_cut:
+    name: "YarboCadenceEQ: Plan slot 2 — last cut completed"
+    has_date: true
+    has_time: true
+  yarbocadenceeq_plan2_earliest_start:
+    name: "YarboCadenceEQ: Plan slot 2 — earliest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan2_latest_start:
+    name: "YarboCadenceEQ: Plan slot 2 — latest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan3_last_cut:
+    name: "YarboCadenceEQ: Plan slot 3 — last cut completed"
+    has_date: true
+    has_time: true
+  yarbocadenceeq_plan3_earliest_start:
+    name: "YarboCadenceEQ: Plan slot 3 — earliest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan3_latest_start:
+    name: "YarboCadenceEQ: Plan slot 3 — latest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan4_last_cut:
+    name: "YarboCadenceEQ: Plan slot 4 — last cut completed"
+    has_date: true
+    has_time: true
+  yarbocadenceeq_plan4_earliest_start:
+    name: "YarboCadenceEQ: Plan slot 4 — earliest start time"
+    has_date: false
+    has_time: true
+  yarbocadenceeq_plan4_latest_start:
+    name: "YarboCadenceEQ: Plan slot 4 — latest start time"
+    has_date: false
     has_time: true
 
 
@@ -754,6 +976,7 @@ template:
                             or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on')) %}
           {% set running = states('sensor.yarbocadenceeq_auto_plan_status')
                            in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] %}
+          {% set slot_active = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) != 0 %}
           {% set opts = state_attr('select.' ~ s ~ '_plan_select','options') or [] %}
           {% set remembered = states('input_text.yarbocadenceeq_selected_plan') %}
           {% set current = states('select.' ~ s ~ '_plan_select') %}
@@ -770,7 +993,7 @@ template:
           {% if not is_state('input_boolean.yarbocadenceeq_auto_enabled','on') %}{% set ns.b = ns.b + ['mowing switch off'] %}{% endif %}
           {% if not is_state('binary_sensor.yarbocadenceeq_online','on') %}{% set ns.b = ns.b + ['robot offline'] %}{% endif %}
           {% if not is_state('input_boolean.yarbocadenceeq_docked','on') %}{% set ns.b = ns.b + ['not on dock'] %}{% endif %}
-          {% if running %}{% set ns.b = ns.b + ['plan already running'] %}{% endif %}
+          {% if running or slot_active %}{% set ns.b = ns.b + ['plan already running'] %}{% endif %}
           {# Charging is NOT a blocker on its own — the robot sits at "Charging" for
              hours at 100% (battery-care), and we want to dispatch as soon as battery
              is at/above the dispatch minimum. Battery level below is the real gate. #}
@@ -807,7 +1030,13 @@ template:
       - name: "YarboCadenceEQ: Active Plan Cut Hours"
         unique_id: yarbocadenceeq_active_plan_cut_hours
         unit_of_measurement: h
-        state: "{{ states('input_number.yarbocadenceeq_active_cut_hours') | float(3.5) }}"
+        state: >
+          {% set slot = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) %}
+          {% if slot in [1,2,3,4] %}
+            {{ states('input_number.yarbocadenceeq_plan' ~ slot ~ '_cut_hours') | float(3.5) }}
+          {% else %}
+            {{ states('input_number.yarbocadenceeq_plan1_cut_hours') | float(3.5) }}
+          {% endif %}
 
       # Display-only mower-friendly label for Yarbo's generic phase words.
       # (Logic elsewhere keeps matching the RAW state strings — do not key off this.)
@@ -894,7 +1123,7 @@ template:
         unique_id: yarbocadenceeq_hours_since_last_cut
         unit_of_measurement: h
         state: >
-          {% set last = states('input_datetime.yarbocadenceeq_last_cut_completed') %}
+          {% set last = states('input_datetime.yarbocadenceeq_plan1_last_cut') %}
           {% if last in ['unknown','unavailable'] or not last %}
             999
           {% else %}
@@ -1100,42 +1329,348 @@ template:
             {{ n }} h
           {% endif %}
 
+      # ---- Per-slot hours-since-last-cut and next-cut prediction ---------------
+      - name: "YarboCadenceEQ: Plan 1 Hours Since Last Cut"
+        unique_id: yarbocadenceeq_plan1_hours_since_last_cut
+        unit_of_measurement: h
+        state: >
+          {% set last = states('input_datetime.yarbocadenceeq_plan1_last_cut') %}
+          {% if last in ['unknown','unavailable'] or not last %}
+            999
+          {% else %}
+            {{ ((as_timestamp(now()) - as_timestamp(last)) / 3600) | round(1) }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 1 Next Cut Prediction"
+        unique_id: yarbocadenceeq_plan1_next_cut_prediction
+        device_class: timestamp
+        state: >
+          {% set enabled = is_state('input_boolean.yarbocadenceeq_plan1_enabled','on') %}
+          {% set last_s = states('input_datetime.yarbocadenceeq_plan1_last_cut') %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set interval = states('input_number.yarbocadenceeq_plan1_interval_hours') | float(48) %}
+          {% set gap = states('input_number.yarbocadenceeq_plan1_min_gap_hours') | float(24) %}
+          {% set cut_h = states('input_number.yarbocadenceeq_plan1_cut_hours') | float(3.5) %}
+          {% set buf = states('input_number.yarbocadenceeq_plan1_buffer_hours') | float(1.0) %}
+          {% set trig = [cut_h + buf, states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0)] | max %}
+          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
+          {% if not enabled %}
+            {{ (now_ts + 876000) | timestamp_local }}
+          {% else %}
+            {% if last_s in ['unknown','unavailable'] or not last_s %}
+              {% set last_ts = now_ts %}
+            {% else %}
+              {% set last_ts = as_timestamp(last_s) %}
+            {% endif %}
+            {% set normal = last_ts + interval * 3600 %}
+            {% set min_ok = last_ts + gap * 3600 %}
+            {% set cand = normal %}
+            {% if to_rain < 999 %}
+              {% if to_rain >= cut_h %}
+                {% set prerain = [now_ts + (to_rain - trig) * 3600, min_ok, now_ts] | max %}
+                {% if prerain < cand %}{% set cand = prerain %}{% endif %}
+              {% else %}
+                {% set clear = now_ts + (states('sensor.yarbocadenceeq_rain_clears_hours') | float(0)) * 3600 %}
+                {% set cand = [cand, clear] | max %}
+              {% endif %}
+            {% endif %}
+            {% set cand = [cand, min_ok, now_ts] | max %}
+            {% set es_s = states('input_datetime.yarbocadenceeq_plan1_earliest_start') %}
+            {% if es_s not in ['unknown','unavailable',''] %}
+              {% set esp = es_s.split(':') %}
+              {% set es_secs = (esp[0] | int(0)) * 3600 + (esp[1] | int(0)) * 60 %}
+              {% if es_secs > 0 %}
+                {% set cand_dt = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts = as_timestamp(cand_dt.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand < day_start_ts + es_secs %}{% set cand = day_start_ts + es_secs %}{% endif %}
+              {% endif %}
+            {% endif %}
+            {% set ls_s = states('input_datetime.yarbocadenceeq_plan1_latest_start') %}
+            {% if ls_s not in ['unknown','unavailable',''] %}
+              {% set lsp = ls_s.split(':') %}
+              {% set ls_secs = (lsp[0] | int(0)) * 3600 + (lsp[1] | int(0)) * 60 %}
+              {% if ls_secs > 0 %}
+                {% set cand_dt_l = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts_l = as_timestamp(cand_dt_l.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand > day_start_ts_l + ls_secs %}
+                  {% set es2_s = states('input_datetime.yarbocadenceeq_plan1_earliest_start') %}
+                  {% set es2p = es2_s.split(':') if es2_s not in ['unknown','unavailable',''] else ['0','0'] %}
+                  {% set es2_secs = (es2p[0] | int(0)) * 3600 + (es2p[1] | int(0)) * 60 %}
+                  {% set cand = day_start_ts_l + 86400 + es2_secs %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            {{ cand | timestamp_local }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 2 Hours Since Last Cut"
+        unique_id: yarbocadenceeq_plan2_hours_since_last_cut
+        unit_of_measurement: h
+        state: >
+          {% set last = states('input_datetime.yarbocadenceeq_plan2_last_cut') %}
+          {% if last in ['unknown','unavailable'] or not last %}
+            999
+          {% else %}
+            {{ ((as_timestamp(now()) - as_timestamp(last)) / 3600) | round(1) }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 2 Next Cut Prediction"
+        unique_id: yarbocadenceeq_plan2_next_cut_prediction
+        device_class: timestamp
+        state: >
+          {% set enabled = is_state('input_boolean.yarbocadenceeq_plan2_enabled','on') %}
+          {% set last_s = states('input_datetime.yarbocadenceeq_plan2_last_cut') %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set interval = states('input_number.yarbocadenceeq_plan2_interval_hours') | float(48) %}
+          {% set gap = states('input_number.yarbocadenceeq_plan2_min_gap_hours') | float(24) %}
+          {% set cut_h = states('input_number.yarbocadenceeq_plan2_cut_hours') | float(3.5) %}
+          {% set buf = states('input_number.yarbocadenceeq_plan2_buffer_hours') | float(1.0) %}
+          {% set trig = [cut_h + buf, states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0)] | max %}
+          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
+          {% if not enabled %}
+            {{ (now_ts + 876000) | timestamp_local }}
+          {% else %}
+            {% if last_s in ['unknown','unavailable'] or not last_s %}
+              {% set last_ts = now_ts %}
+            {% else %}
+              {% set last_ts = as_timestamp(last_s) %}
+            {% endif %}
+            {% set normal = last_ts + interval * 3600 %}
+            {% set min_ok = last_ts + gap * 3600 %}
+            {% set cand = normal %}
+            {% if to_rain < 999 %}
+              {% if to_rain >= cut_h %}
+                {% set prerain = [now_ts + (to_rain - trig) * 3600, min_ok, now_ts] | max %}
+                {% if prerain < cand %}{% set cand = prerain %}{% endif %}
+              {% else %}
+                {% set clear = now_ts + (states('sensor.yarbocadenceeq_rain_clears_hours') | float(0)) * 3600 %}
+                {% set cand = [cand, clear] | max %}
+              {% endif %}
+            {% endif %}
+            {% set cand = [cand, min_ok, now_ts] | max %}
+            {% set es_s = states('input_datetime.yarbocadenceeq_plan2_earliest_start') %}
+            {% if es_s not in ['unknown','unavailable',''] %}
+              {% set esp = es_s.split(':') %}
+              {% set es_secs = (esp[0] | int(0)) * 3600 + (esp[1] | int(0)) * 60 %}
+              {% if es_secs > 0 %}
+                {% set cand_dt = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts = as_timestamp(cand_dt.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand < day_start_ts + es_secs %}{% set cand = day_start_ts + es_secs %}{% endif %}
+              {% endif %}
+            {% endif %}
+            {% set ls_s = states('input_datetime.yarbocadenceeq_plan2_latest_start') %}
+            {% if ls_s not in ['unknown','unavailable',''] %}
+              {% set lsp = ls_s.split(':') %}
+              {% set ls_secs = (lsp[0] | int(0)) * 3600 + (lsp[1] | int(0)) * 60 %}
+              {% if ls_secs > 0 %}
+                {% set cand_dt_l = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts_l = as_timestamp(cand_dt_l.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand > day_start_ts_l + ls_secs %}
+                  {% set es2_s = states('input_datetime.yarbocadenceeq_plan2_earliest_start') %}
+                  {% set es2p = es2_s.split(':') if es2_s not in ['unknown','unavailable',''] else ['0','0'] %}
+                  {% set es2_secs = (es2p[0] | int(0)) * 3600 + (es2p[1] | int(0)) * 60 %}
+                  {% set cand = day_start_ts_l + 86400 + es2_secs %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            {{ cand | timestamp_local }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 3 Hours Since Last Cut"
+        unique_id: yarbocadenceeq_plan3_hours_since_last_cut
+        unit_of_measurement: h
+        state: >
+          {% set last = states('input_datetime.yarbocadenceeq_plan3_last_cut') %}
+          {% if last in ['unknown','unavailable'] or not last %}
+            999
+          {% else %}
+            {{ ((as_timestamp(now()) - as_timestamp(last)) / 3600) | round(1) }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 3 Next Cut Prediction"
+        unique_id: yarbocadenceeq_plan3_next_cut_prediction
+        device_class: timestamp
+        state: >
+          {% set enabled = is_state('input_boolean.yarbocadenceeq_plan3_enabled','on') %}
+          {% set last_s = states('input_datetime.yarbocadenceeq_plan3_last_cut') %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set interval = states('input_number.yarbocadenceeq_plan3_interval_hours') | float(48) %}
+          {% set gap = states('input_number.yarbocadenceeq_plan3_min_gap_hours') | float(24) %}
+          {% set cut_h = states('input_number.yarbocadenceeq_plan3_cut_hours') | float(3.5) %}
+          {% set buf = states('input_number.yarbocadenceeq_plan3_buffer_hours') | float(1.0) %}
+          {% set trig = [cut_h + buf, states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0)] | max %}
+          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
+          {% if not enabled %}
+            {{ (now_ts + 876000) | timestamp_local }}
+          {% else %}
+            {% if last_s in ['unknown','unavailable'] or not last_s %}
+              {% set last_ts = now_ts %}
+            {% else %}
+              {% set last_ts = as_timestamp(last_s) %}
+            {% endif %}
+            {% set normal = last_ts + interval * 3600 %}
+            {% set min_ok = last_ts + gap * 3600 %}
+            {% set cand = normal %}
+            {% if to_rain < 999 %}
+              {% if to_rain >= cut_h %}
+                {% set prerain = [now_ts + (to_rain - trig) * 3600, min_ok, now_ts] | max %}
+                {% if prerain < cand %}{% set cand = prerain %}{% endif %}
+              {% else %}
+                {% set clear = now_ts + (states('sensor.yarbocadenceeq_rain_clears_hours') | float(0)) * 3600 %}
+                {% set cand = [cand, clear] | max %}
+              {% endif %}
+            {% endif %}
+            {% set cand = [cand, min_ok, now_ts] | max %}
+            {% set es_s = states('input_datetime.yarbocadenceeq_plan3_earliest_start') %}
+            {% if es_s not in ['unknown','unavailable',''] %}
+              {% set esp = es_s.split(':') %}
+              {% set es_secs = (esp[0] | int(0)) * 3600 + (esp[1] | int(0)) * 60 %}
+              {% if es_secs > 0 %}
+                {% set cand_dt = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts = as_timestamp(cand_dt.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand < day_start_ts + es_secs %}{% set cand = day_start_ts + es_secs %}{% endif %}
+              {% endif %}
+            {% endif %}
+            {% set ls_s = states('input_datetime.yarbocadenceeq_plan3_latest_start') %}
+            {% if ls_s not in ['unknown','unavailable',''] %}
+              {% set lsp = ls_s.split(':') %}
+              {% set ls_secs = (lsp[0] | int(0)) * 3600 + (lsp[1] | int(0)) * 60 %}
+              {% if ls_secs > 0 %}
+                {% set cand_dt_l = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts_l = as_timestamp(cand_dt_l.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand > day_start_ts_l + ls_secs %}
+                  {% set es2_s = states('input_datetime.yarbocadenceeq_plan3_earliest_start') %}
+                  {% set es2p = es2_s.split(':') if es2_s not in ['unknown','unavailable',''] else ['0','0'] %}
+                  {% set es2_secs = (es2p[0] | int(0)) * 3600 + (es2p[1] | int(0)) * 60 %}
+                  {% set cand = day_start_ts_l + 86400 + es2_secs %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            {{ cand | timestamp_local }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 4 Hours Since Last Cut"
+        unique_id: yarbocadenceeq_plan4_hours_since_last_cut
+        unit_of_measurement: h
+        state: >
+          {% set last = states('input_datetime.yarbocadenceeq_plan4_last_cut') %}
+          {% if last in ['unknown','unavailable'] or not last %}
+            999
+          {% else %}
+            {{ ((as_timestamp(now()) - as_timestamp(last)) / 3600) | round(1) }}
+          {% endif %}
+
+      - name: "YarboCadenceEQ: Plan 4 Next Cut Prediction"
+        unique_id: yarbocadenceeq_plan4_next_cut_prediction
+        device_class: timestamp
+        state: >
+          {% set enabled = is_state('input_boolean.yarbocadenceeq_plan4_enabled','on') %}
+          {% set last_s = states('input_datetime.yarbocadenceeq_plan4_last_cut') %}
+          {% set now_ts = as_timestamp(now()) %}
+          {% set interval = states('input_number.yarbocadenceeq_plan4_interval_hours') | float(48) %}
+          {% set gap = states('input_number.yarbocadenceeq_plan4_min_gap_hours') | float(24) %}
+          {% set cut_h = states('input_number.yarbocadenceeq_plan4_cut_hours') | float(3.5) %}
+          {% set buf = states('input_number.yarbocadenceeq_plan4_buffer_hours') | float(1.0) %}
+          {% set trig = [cut_h + buf, states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0)] | max %}
+          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
+          {% if not enabled %}
+            {{ (now_ts + 876000) | timestamp_local }}
+          {% else %}
+            {% if last_s in ['unknown','unavailable'] or not last_s %}
+              {% set last_ts = now_ts %}
+            {% else %}
+              {% set last_ts = as_timestamp(last_s) %}
+            {% endif %}
+            {% set normal = last_ts + interval * 3600 %}
+            {% set min_ok = last_ts + gap * 3600 %}
+            {% set cand = normal %}
+            {% if to_rain < 999 %}
+              {% if to_rain >= cut_h %}
+                {% set prerain = [now_ts + (to_rain - trig) * 3600, min_ok, now_ts] | max %}
+                {% if prerain < cand %}{% set cand = prerain %}{% endif %}
+              {% else %}
+                {% set clear = now_ts + (states('sensor.yarbocadenceeq_rain_clears_hours') | float(0)) * 3600 %}
+                {% set cand = [cand, clear] | max %}
+              {% endif %}
+            {% endif %}
+            {% set cand = [cand, min_ok, now_ts] | max %}
+            {% set es_s = states('input_datetime.yarbocadenceeq_plan4_earliest_start') %}
+            {% if es_s not in ['unknown','unavailable',''] %}
+              {% set esp = es_s.split(':') %}
+              {% set es_secs = (esp[0] | int(0)) * 3600 + (esp[1] | int(0)) * 60 %}
+              {% if es_secs > 0 %}
+                {% set cand_dt = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts = as_timestamp(cand_dt.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand < day_start_ts + es_secs %}{% set cand = day_start_ts + es_secs %}{% endif %}
+              {% endif %}
+            {% endif %}
+            {% set ls_s = states('input_datetime.yarbocadenceeq_plan4_latest_start') %}
+            {% if ls_s not in ['unknown','unavailable',''] %}
+              {% set lsp = ls_s.split(':') %}
+              {% set ls_secs = (lsp[0] | int(0)) * 3600 + (lsp[1] | int(0)) * 60 %}
+              {% if ls_secs > 0 %}
+                {% set cand_dt_l = cand | timestamp_local | as_datetime %}
+                {% set day_start_ts_l = as_timestamp(cand_dt_l.replace(hour=0, minute=0, second=0, microsecond=0)) %}
+                {% if cand > day_start_ts_l + ls_secs %}
+                  {% set es2_s = states('input_datetime.yarbocadenceeq_plan4_earliest_start') %}
+                  {% set es2p = es2_s.split(':') if es2_s not in ['unknown','unavailable',''] else ['0','0'] %}
+                  {% set es2_secs = (es2p[0] | int(0)) * 3600 + (es2p[1] | int(0)) * 60 %}
+                  {% set cand = day_start_ts_l + 86400 + es2_secs %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+            {{ cand | timestamp_local }}
+          {% endif %}
+
       - name: "YarboCadenceEQ: Next Cut Prediction"
         unique_id: yarbocadenceeq_next_cut_prediction
         device_class: timestamp
         state: >
-          {% set last_s = states('input_datetime.yarbocadenceeq_last_cut_completed') %}
           {% set now_ts = as_timestamp(now()) %}
-          {% set interval = states('input_number.yarbocadenceeq_cut_interval_hours') | float(48) %}
-          {% set gap = states('input_number.yarbocadenceeq_min_hours_between_cuts') | float(24) %}
-          {% set trig = states('sensor.yarbocadenceeq_rain_trigger_hours') | float(4.5) %}
-          {% set to_rain = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
-          {% if last_s in ['unknown','unavailable'] or not last_s %}
-            {% set last_ts = now_ts %}
-          {% else %}
-            {% set last_ts = as_timestamp(last_s) %}
-          {% endif %}
-          {% set normal = last_ts + interval * 3600 %}
-          {% set min_ok = last_ts + gap * 3600 %}
-          {% set cut_h = states('sensor.yarbocadenceeq_active_plan_cut_hours') | float(3.5) %}
-          {% set cand = normal %}
-          {% if to_rain < 999 %}
-            {% if to_rain >= cut_h %}
-              {# Rain is beatable — pull the cut to ~trig hours before it (the moment
-                 the pre-rain trigger fires). Never earlier than min_ok or now. Only
-                 if that's actually sooner than the normal schedule. #}
-              {% set prerain = [now_ts + (to_rain - trig) * 3600, min_ok, now_ts] | max %}
-              {% if prerain < cand %}{% set cand = prerain %}{% endif %}
-            {% else %}
-              {# Rain too imminent to beat (a cut can't finish first) — don't pull up
-                 and don't schedule into it; wait until it clears, but no earlier than
-                 the normal schedule. (Dry-out delay after clearing is v2.0 #13.) #}
-              {% set clear = now_ts + (states('sensor.yarbocadenceeq_rain_clears_hours') | float(0)) * 3600 %}
-              {% set cand = [cand, clear] | max %}
+          {% set ns = namespace(earliest=none) %}
+          {% for n in [1,2,3,4] %}
+            {% set enabled = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
+            {% if enabled %}
+              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
+              {% if pred not in ['unknown','unavailable','none'] %}
+                {% set pred_ts = as_timestamp(pred) %}
+                {% if ns.earliest is none or pred_ts < ns.earliest %}
+                  {% set ns.earliest = pred_ts %}
+                {% endif %}
+              {% endif %}
             {% endif %}
+          {% endfor %}
+          {% if ns.earliest is not none %}
+            {{ ns.earliest | timestamp_local }}
+          {% else %}
+            {{ now_ts | timestamp_local }}
           {% endif %}
-          {% set cand = [cand, min_ok, now_ts] | max %}
-          {{ cand | timestamp_local }}
+
+      - name: "YarboCadenceEQ: Next Queued Slot"
+        unique_id: yarbocadenceeq_next_queued_slot
+        # The slot number (1-4) whose next-cut prediction is earliest among all
+        # enabled slots. 0 when no enabled slots have a valid prediction.
+        # Used by the dashboard countdown and plan schedule cards so they don't
+        # have to re-derive this with a fragile timestamp comparison.
+        state: >
+          {% set ns = namespace(slot=0, earliest=none) %}
+          {% for n in [1,2,3,4] %}
+            {% if is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled','on') %}
+              {% set pred = states('sensor.yarbocadenceeq_plan' ~ n ~ '_next_cut_prediction') %}
+              {% if pred not in ['unknown','unavailable','none'] %}
+                {% set pred_ts = as_timestamp(pred) %}
+                {% if ns.earliest is none or pred_ts < ns.earliest %}
+                  {% set ns.earliest = pred_ts %}
+                  {% set ns.slot = n %}
+                {% endif %}
+              {% endif %}
+            {% endif %}
+          {% endfor %}
+          {{ ns.slot }}
+        attributes:
+          plan_name: >
+            {% set slot = this.state | int(0) %}
+            {{ states('input_text.yarbocadenceeq_plan' ~ slot ~ '_yarbo_plan') | trim if slot > 0 else '' }}
 
       - name: "YarboCadenceEQ: Status Reason"
         unique_id: yarbocadenceeq_status_reason
@@ -1359,6 +1894,11 @@ script:
       - service: script.yarbocadenceeq_press_yarbo_button
         data:
           button: return_to_charge
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_active_plan_slot
+        data:
+          value: 0
       - service: notify.persistent_notification
         data:
           title: "Yarbo: rain cancel"
@@ -1369,6 +1909,144 @@ script:
   # Siri phrase ("Stop Yarbo", "Resume Yarbo", "Yarbo go home", "Start Yarbo")
   # that activates each. They are manual overrides and run regardless of the
   # Lawn Mowing switch.
+  # Select a specific plan slot's Yarbo plan and start it. Called by the
+  # auto-scheduler only; manual starts use yarbocadenceeq_start_active_plan.
+  yarbocadenceeq_start_slot_plan:
+    alias: "YarboCadenceEQ: Start plan for a specific slot"
+    fields:
+      slot:
+        description: "Slot number 1-4"
+        example: 1
+      plan_name:
+        description: "Yarbo plan name to run"
+        example: "Front Yard"
+      cut_hours:
+        description: "Expected run duration for notification message"
+        example: 3.5
+      is_rain_dispatch:
+        description: "True if this is a pre-rain pull-forward"
+        example: false
+    sequence:
+      - variables:
+          slug: "{{ states('sensor.yarbocadenceeq_device_slug_effective') }}"
+      - service: select.select_option
+        target:
+          entity_id: "select.{{ slug }}_plan_select"
+        data:
+          option: "{{ plan_name }}"
+      - delay: "00:00:02"
+      - service: button.press
+        target:
+          entity_id: "button.{{ slug }}_start_plan"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.yarbocadenceeq_current_job_started
+        data:
+          timestamp: "{{ now().timestamp() }}"
+      - service: notify.persistent_notification
+        data:
+          title: "Yarbo: starting plan (slot {{ slot }})"
+          message: >
+            Plan "{{ plan_name }}" slot {{ slot }} ({{ cut_hours }}h).
+            {{ 'Pre-rain dispatch. ' if is_rain_dispatch else '' }}
+            {{ states('sensor.yarbocadenceeq_current_temp_f') }}°F,
+            RTK {{ states('sensor.yarbocadenceeq_rtk_signal') }},
+            rain in {{ states('sensor.yarbocadenceeq_hours_until_rain') }}h.
+
+  # Evaluate all plan slots and dispatch the first eligible one. Called every 5
+  # min by yarbocadenceeq_main_scheduler. Handles both normal-cadence and
+  # pre-rain dispatch; picks slots in priority order (1 → 4).
+  yarbocadenceeq_evaluate_and_dispatch:
+    alias: "YarboCadenceEQ: Evaluate slots and dispatch if eligible"
+    sequence:
+      # Bail immediately if any plan is already running or another slot is active.
+      - condition: template
+        value_template: >
+          {{ states('input_number.yarbocadenceeq_active_plan_slot') | int(0) == 0 }}
+      - condition: template
+        value_template: >
+          {{ states('sensor.yarbocadenceeq_auto_plan_status')
+             not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}
+
+      # Step A: build per-slot eligibility data using a Jinja namespace loop.
+      - variables:
+          now_ts: "{{ as_timestamp(now()) }}"
+          blocker_ok: "{{ is_state('sensor.yarbocadenceeq_cut_blocker', 'OK') }}"
+          to_rain: "{{ states('sensor.yarbocadenceeq_hours_until_rain') | float(999) }}"
+          slots: >
+            {% set ns = namespace(result=[]) %}
+            {% for n in [1, 2, 3, 4] %}
+              {% set enabled = is_state('input_boolean.yarbocadenceeq_plan' ~ n ~ '_enabled', 'on') %}
+              {% set plan = states('input_text.yarbocadenceeq_plan' ~ n ~ '_yarbo_plan') | trim %}
+              {% set slug = states('sensor.yarbocadenceeq_device_slug_effective') %}
+              {% set opts = state_attr('select.' ~ slug ~ '_plan_select', 'options') or [] %}
+              {% set plan_valid = plan not in ['', 'unknown', 'unavailable'] and plan in opts %}
+              {% set interval = states('input_number.yarbocadenceeq_plan' ~ n ~ '_interval_hours') | float(48) %}
+              {% set gap = states('input_number.yarbocadenceeq_plan' ~ n ~ '_min_gap_hours') | float(24) %}
+              {% set cut_h = states('input_number.yarbocadenceeq_plan' ~ n ~ '_cut_hours') | float(3.5) %}
+              {% set buf = states('input_number.yarbocadenceeq_plan' ~ n ~ '_buffer_hours') | float(1.0) %}
+              {% set lc = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_last_cut') %}
+              {% set lc_ts = as_timestamp(lc) if lc not in ['unknown','unavailable',''] else 0 %}
+              {% set since = (as_timestamp(now()) - lc_ts) / 3600 if lc_ts > 0 else 999 %}
+              {% set es = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_earliest_start') %}
+              {% set es_parts = es.split(':') %}
+              {% set es_mins = (es_parts[0] | int(0)) * 60 + (es_parts[1] | int(0)) %}
+              {% set now_mins = now().hour * 60 + now().minute %}
+              {% set past_earliest = now_mins >= es_mins or es_mins == 0 %}
+              {% set ls = states('input_datetime.yarbocadenceeq_plan' ~ n ~ '_latest_start') %}
+              {% set ls_parts = ls.split(':') if ls not in ['unknown','unavailable',''] else ['0','0'] %}
+              {% set ls_mins = (ls_parts[0] | int(0)) * 60 + (ls_parts[1] | int(0)) %}
+              {% set before_latest = now_mins <= ls_mins or ls_mins == 0 %}
+              {% set emg = states('input_number.yarbocadenceeq_rain_emergency_hours') | float(3.0) %}
+              {% set trig = [cut_h + buf, emg] | max %}
+              {% set to_rain_v = states('sensor.yarbocadenceeq_hours_until_rain') | float(999) %}
+              {% set due_normal = since >= interval and past_earliest and before_latest %}
+              {% set due_rain = to_rain_v <= trig and to_rain_v >= cut_h and since >= gap and past_earliest and before_latest %}
+              {% set ns.result = ns.result + [{
+                'n': n, 'enabled': enabled, 'plan': plan, 'plan_valid': plan_valid,
+                'due_normal': due_normal, 'due_rain': due_rain, 'cut_h': cut_h, 'since': since
+              }] %}
+            {% endfor %}
+            {{ ns.result }}
+
+      # Step B: select the first eligible slot (priority order 1→4).
+      - variables:
+          chosen_slot: >
+            {% set ns = namespace(slot=none) %}
+            {% for s in slots %}
+              {% if ns.slot is none and s.enabled and s.plan_valid and (s.due_normal or s.due_rain) %}
+                {% set ns.slot = s %}
+              {% endif %}
+            {% endfor %}
+            {{ ns.slot }}
+          want_cut: "{{ chosen_slot is not none and blocker_ok }}"
+          want_wake: "{{ chosen_slot is not none and not blocker_ok }}"
+
+      # Wake path: eligible but asleep or no RTK lock yet.
+      - if: "{{ want_wake and is_state('input_boolean.yarbocadenceeq_docked','on') }}"
+        then:
+          - service: script.yarbocadenceeq_refresh_all
+          - service: logbook.log
+            data:
+              name: "Yarbo Auto"
+              message: >
+                Waking + refreshing before dispatch. Blocker: {{ states('sensor.yarbocadenceeq_cut_blocker') }}.
+
+      # Dispatch path: eligible and all gates pass.
+      - condition: template
+        value_template: "{{ want_cut }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_active_plan_slot
+        data:
+          value: "{{ chosen_slot.n }}"
+      - service: script.yarbocadenceeq_start_slot_plan
+        data:
+          slot: "{{ chosen_slot.n }}"
+          plan_name: "{{ chosen_slot.plan }}"
+          cut_hours: "{{ chosen_slot.cut_h }}"
+          is_rain_dispatch: "{{ chosen_slot.due_rain and not chosen_slot.due_normal }}"
+
   yarbocadenceeq_cmd_stop:
     alias: "YarboCadenceEQ CMD: Stop (freeze in place)"
     icon: mdi:pause
@@ -1412,6 +2090,22 @@ script:
           defaults:
             yarbocadenceeq_active_cut_hours: 3.5
             yarbocadenceeq_cut_buffer_hours: 1.0
+            yarbocadenceeq_plan1_interval_hours: 48
+            yarbocadenceeq_plan1_min_gap_hours: 24
+            yarbocadenceeq_plan1_cut_hours: 3.5
+            yarbocadenceeq_plan1_buffer_hours: 1.0
+            yarbocadenceeq_plan2_interval_hours: 48
+            yarbocadenceeq_plan2_min_gap_hours: 24
+            yarbocadenceeq_plan2_cut_hours: 3.5
+            yarbocadenceeq_plan2_buffer_hours: 1.0
+            yarbocadenceeq_plan3_interval_hours: 48
+            yarbocadenceeq_plan3_min_gap_hours: 24
+            yarbocadenceeq_plan3_cut_hours: 3.5
+            yarbocadenceeq_plan3_buffer_hours: 1.0
+            yarbocadenceeq_plan4_interval_hours: 48
+            yarbocadenceeq_plan4_min_gap_hours: 24
+            yarbocadenceeq_plan4_cut_hours: 3.5
+            yarbocadenceeq_plan4_buffer_hours: 1.0
             yarbocadenceeq_rain_emergency_hours: 3.0
             yarbocadenceeq_rain_prob_threshold: 60
             yarbocadenceeq_rain_amount_threshold: 0.1
@@ -1524,6 +2218,11 @@ automation:
       - service: script.yarbocadenceeq_press_yarbo_button
         data:
           button: return_to_charge
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_active_plan_slot
+        data:
+          value: 0
       - service: notify.persistent_notification
         data:
           title: "Yarbo: disabled"
@@ -1586,68 +2285,7 @@ automation:
           {{ states('sensor.yarbocadenceeq_auto_plan_status')
              not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}
     action:
-      - variables:
-          since: "{{ states('sensor.yarbocadenceeq_hours_since_last_cut') | float(999) }}"
-          want_normal: "{{ (states('sensor.yarbocadenceeq_hours_since_last_cut') | float(999)) >= (states('input_number.yarbocadenceeq_cut_interval_hours') | float(48)) }}"
-          want_rain: "{{ is_state('binary_sensor.yarbocadenceeq_should_cut_ahead_of_rain','on') }}"
-      - choose:
-
-          # CASE 0: want to cut but asleep / RTK not locked -> wake + refresh.
-          - conditions:
-              - "{{ want_normal or want_rain }}"
-              - condition: template
-                value_template: "{{ is_state('input_boolean.yarbocadenceeq_docked','on') }}"
-              - or:
-                  - condition: state
-                    entity_id: sensor.yarbocadenceeq_activity
-                    state: "standby"
-                  - condition: template
-                    value_template: >
-                      {% set sig = states('sensor.yarbocadenceeq_rtk_signal') %}
-                      {{ not (sig == 'Strong'
-                              or (sig == 'Medium' and is_state('input_boolean.yarbocadenceeq_allow_medium_rtk','on'))) }}
-            sequence:
-              - service: script.yarbocadenceeq_refresh_all
-              - service: logbook.log
-                data:
-                  name: "Yarbo Auto"
-                  message: "Waking + refreshing all Yarbo data before dispatch (RTK={{ states('sensor.yarbocadenceeq_rtk_signal') }})."
-
-          # CASE A: past interval and all gates pass -> cut.
-          - conditions:
-              - "{{ want_normal }}"
-              - condition: state
-                entity_id: binary_sensor.yarbocadenceeq_ok_to_cut_now
-                state: "on"
-            sequence:
-              - service: script.yarbocadenceeq_start_active_plan
-
-          # CASE B: pre-rain dispatch.
-          - conditions:
-              - "{{ want_rain }}"
-              - condition: state
-                entity_id: binary_sensor.yarbocadenceeq_ok_to_cut_now
-                state: "on"
-            sequence:
-              - service: notify.persistent_notification
-                data:
-                  title: "Yarbo: pre-rain cut"
-                  message: >
-                    Rain in {{ states('sensor.yarbocadenceeq_hours_until_rain') }}h (trigger
-                    {{ states('sensor.yarbocadenceeq_rain_trigger_hours') }}h). Last cut {{ since }}h ago.
-              - service: script.yarbocadenceeq_start_active_plan
-
-          # CASE C: past interval but blocked -> log reason.
-          - conditions:
-              - "{{ want_normal }}"
-              - condition: state
-                entity_id: binary_sensor.yarbocadenceeq_ok_to_cut_now
-                state: "off"
-            sequence:
-              - service: logbook.log
-                data:
-                  name: "Yarbo Auto"
-                  message: "Postponed: {{ states('sensor.yarbocadenceeq_status_reason') }}."
+      - service: script.yarbocadenceeq_evaluate_and_dispatch
 
   # ---- RAIN CANCEL (runs even when disabled, to protect a manual mow) -------
   - id: yarbocadenceeq_rain_cancel_auto
@@ -1901,7 +2539,11 @@ automation:
       - condition: template
         value_template: >
           {% set js = states('input_datetime.yarbocadenceeq_current_job_started') %}
-          {% set lc = states('input_datetime.yarbocadenceeq_last_cut_completed') %}
+          {% set slot = states('input_number.yarbocadenceeq_active_plan_slot') | int(0) %}
+          {% set lc_entity = 'input_datetime.yarbocadenceeq_plan' ~ slot ~ '_last_cut'
+                             if slot in [1,2,3,4]
+                             else 'input_datetime.yarbocadenceeq_last_cut_completed' %}
+          {% set lc = states(lc_entity) %}
           {{ js not in ['unknown','unavailable'] and js
              and (lc in ['unknown','unavailable'] or not lc
                   or as_timestamp(js) > as_timestamp(lc)) }}
@@ -1927,23 +2569,40 @@ automation:
           {{ trigger.id == 'endstate'
              or (trigger.id == 'docked' and ran_enough)
              or (left_real and charging and ran_enough) }}
-      - service: input_datetime.set_datetime
-        target:
-          entity_id: input_datetime.yarbocadenceeq_last_cut_completed
-        data:
-          timestamp: "{{ now().timestamp() }}"
+      - variables:
+          finishing_slot: "{{ states('input_number.yarbocadenceeq_active_plan_slot') | int(0) }}"
+      - choose:
+          - conditions:
+              - "{{ finishing_slot in [1,2,3,4] }}"
+            sequence:
+              - service: input_datetime.set_datetime
+                target:
+                  entity_id: "input_datetime.yarbocadenceeq_plan{{ finishing_slot }}_last_cut"
+                data:
+                  timestamp: "{{ now().timestamp() }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.yarbocadenceeq_active_plan_slot
+                data:
+                  value: 0
+        default:
+          - service: input_datetime.set_datetime
+            target:
+              entity_id: input_datetime.yarbocadenceeq_last_cut_completed
+            data:
+              timestamp: "{{ now().timestamp() }}"
       - service: logbook.log
         data:
           name: "Yarbo Auto"
           message: >
-            Stamped cut completion (via {{ trigger.id }};
+            Stamped cut completion slot {{ finishing_slot }} (via {{ trigger.id }};
             recharging={{ states('sensor.yarbocadenceeq_recharging_status') }}).
       - service: notify.persistent_notification
         data:
           title: "Yarbo: cut complete"
           message: >
             Cut recorded at {{ now().strftime('%a %H:%M') }}
-            ({{ 'finished' if trigger.id == 'endstate' else 'returned to dock' }}).
+            (slot {{ finishing_slot }}, {{ 'finished' if trigger.id == 'endstate' else 'returned to dock' }}).
 
   # ---- DATA REFRESH: device data + GPS on an interval -----------------------
   - id: yarbocadenceeq_refresh_device_data
@@ -2000,6 +2659,43 @@ automation:
         data:
           wake: false
 
+  # ---- STUCK SLOT SAFETY: clear active_plan_slot when robot is home + idle ----
+  # The track_completion automation stamps last_cut only when ran_enough is true.
+  # If that guard fails (short run, early cancel) the slot can stay non-zero,
+  # making the dashboard show "Blocked — plan already running" indefinitely.
+  # This safety net clears the slot whenever the robot is confirmed on the dock
+  # with no active plan, regardless of how the run ended. The 5-min hold on the
+  # docked trigger prevents a false clear in the brief window between dispatch
+  # and the plan actually becoming active.
+  - id: yarbocadenceeq_clear_stuck_slot
+    alias: "YarboCadenceEQ: Clear stuck active slot when robot is home"
+    trigger:
+      - platform: state
+        entity_id: input_boolean.yarbocadenceeq_docked
+        to: "on"
+        for: "00:05:00"
+      - platform: time_pattern
+        minutes: "/15"
+    condition:
+      - condition: template
+        value_template: >
+          {{ states('input_number.yarbocadenceeq_active_plan_slot') | int(0) != 0
+             and is_state('input_boolean.yarbocadenceeq_docked', 'on')
+             and states('sensor.yarbocadenceeq_auto_plan_status')
+                 not in ['Cleaning','Calculating Route','Heading to Area','Waypoint Navigation'] }}
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_active_plan_slot
+        data:
+          value: 0
+      - service: logbook.log
+        data:
+          name: "Yarbo Auto"
+          message: >
+            Cleared stuck active_plan_slot {{ states('input_number.yarbocadenceeq_active_plan_slot') }}
+            (robot confirmed home, no active plan).
+
   # ---- RESET: hidden switch flips ON -> reset tuning, then flip it back -------
   - id: yarbocadenceeq_reset_on_toggle
     alias: "YarboCadenceEQ: Reset tuning when switch flipped"
@@ -2036,3 +2732,68 @@ automation:
         data:
           name: "Yarbo Auto"
           message: "First-boot seed: applied recommended tuning defaults (one-time)."
+
+  # ---- V1→V2 MIGRATION: copy single-plan settings to slot 1 ----------------
+  # Runs once on first HA start after upgrading to v2. Copies the v1 global
+  # cadence settings and plan selection to slot 1 so upgrading users don't lose
+  # their schedule history. Gated on seeded=on (v1 already ran) AND v2_migrated=off
+  # (hasn't run yet). Sets v2_migrated=on at the end so it never fires again.
+  - id: yarbocadenceeq_migrate_v1_to_v2
+    alias: "YarboCadenceEQ: Migrate v1 single-plan settings to slot 1"
+    trigger:
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: state
+        entity_id: input_boolean.yarbocadenceeq_seeded
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.yarbocadenceeq_v2_migrated
+        state: "off"
+    action:
+      - delay: "00:00:15"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_plan1_interval_hours
+        data:
+          value: "{{ states('input_number.yarbocadenceeq_cut_interval_hours') | float(48) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_plan1_min_gap_hours
+        data:
+          value: "{{ states('input_number.yarbocadenceeq_min_hours_between_cuts') | float(24) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_plan1_cut_hours
+        data:
+          value: "{{ states('input_number.yarbocadenceeq_active_cut_hours') | float(3.5) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.yarbocadenceeq_plan1_buffer_hours
+        data:
+          value: "{{ states('input_number.yarbocadenceeq_cut_buffer_hours') | float(1.0) }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.yarbocadenceeq_plan1_yarbo_plan
+        data:
+          value: "{{ states('input_text.yarbocadenceeq_selected_plan') | trim }}"
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.yarbocadenceeq_plan1_last_cut
+        data:
+          timestamp: >
+            {% set lc = states('input_datetime.yarbocadenceeq_last_cut_completed') %}
+            {{ as_timestamp(lc) if lc not in ['unknown','unavailable',''] else as_timestamp(now()) }}
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.yarbocadenceeq_plan1_enabled
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.yarbocadenceeq_v2_migrated
+      - service: logbook.log
+        data:
+          name: "Yarbo Auto"
+          message: >
+            v1→v2 migration complete: copied single-plan settings to slot 1
+            (plan="{{ states('input_text.yarbocadenceeq_selected_plan') }}",
+            interval={{ states('input_number.yarbocadenceeq_cut_interval_hours') }}h).
